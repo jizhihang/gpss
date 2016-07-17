@@ -211,14 +211,14 @@ def two_point_pred(K, f, x, ax=None, ind=[0, 1],
 
     cont, t, cent = base_plot(K, ind, ax=ax)
     if stub is not None:
-        plt.savefig('./diagrams/' + stub + str(start) + '.svg')
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start))
 
     x_lim = ax.get_xlim()
     cont2 = plt.Line2D([x_lim[0], x_lim[1]], [f[0], f[0]], linewidth=fixed_size, linestyle=fixed_linestyle, color=fixed_linecolor)
     ax.add_line(cont2)
 
     if stub is not None:
-        plt.savefig('./diagrams/' + stub + str(start+1) + '.svg')
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+1))
 
     # # Compute conditional mean and variance
     f2_mean = subK[0, 1]/subK[0, 0]*f[0]
@@ -228,12 +228,12 @@ def two_point_pred(K, f, x, ax=None, ind=[0, 1],
     pdf = plt.Line2D(x_val, pdf_val+f[0], linewidth=conditional_size, linestyle=conditional_linestyle, color=conditional_linecolor)
     ax.add_line(pdf)
     if stub is not None:
-        plt.savefig('./diagrams/' + stub + str(start+2) + '.svg')
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+2))
     
     obs = plt.Line2D([f[1]], [f[0]], linewidth=10, markersize=10, color=fixed_linecolor, marker='o')
     ax.add_line(obs)
     if stub is not None:
-        plt.savefig('./diagrams/' + stub + str(start+3) + '.svg')
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+3))
     
     # load gpdistfunc
 
@@ -353,7 +353,7 @@ def under_determined_system():
     ax.set_xlim(xlim)
     ax.set_xlabel('$x$', fontsize=20)
     ax.set_ylabel('$y$', fontsize=20)
-    fig.savefig('./diagrams/one_point0.svg')
+    fig.savefig('./diagrams/one_point000.svg')
 
     xvals = np.linspace(0, 3, 2)[:, None]
     count=0
@@ -364,7 +364,7 @@ def under_determined_system():
         ax.plot(xvals, yvals, '-', linewidth=2, color=[0., 0., 1.])
         if i < 9 or i == 100:
             count += 1
-            fig.savefig('./diagrams/one_point' + str(count) + '.svg')
+            fig.savefig('./diagrams/one_point{count:0>3}.svg'.format(count=count))
 
 
 def bayes_update():
@@ -423,16 +423,16 @@ def bayes_update():
 
     ax.plot(f, prior_curve, color=[1, 0., 0.], linewidth=3)
     ax.text(3.5, 2, '$p(c) = \mathcal{N}(c|0, \\alpha_1)$', horizontalalignment='center') 
-    plt.savefig('./diagrams/dem_gaussian1.svg')
+    plt.savefig('./diagrams/dem_gaussian001.svg')
 
     ax.plot(f, likelihood_curve, color=[0, 0, 1], linewidth=3)
     ax.text(3.5, 1.5,'$p(y|m, c, x, \\sigma^2)=\mathcal{N}(y|mx+c,\\sigma^2)$', horizontalalignment='center') 
-    plt.savefig('./diagrams/dem_gaussian2.svg')
+    plt.savefig('./diagrams/dem_gaussian002.svg')
 
     ax.plot(f, posterior_curve, color=[1, 0, 1], linewidth=3)
     ax.text(3.5, 1, '$p(c|y, m, x, \\sigma^2)=$', horizontalalignment='center') 
     plt.text(3.5, 0.75, '$\mathcal{N}\\left(c|\\frac{y-mx}{1+\\sigma^2\\alpha_1},(\\sigma^{-2}+\\alpha_1^{-1})^{-1}\\right)$', horizontalalignment='center') 
-    plt.savefig('./diagrams/dem_gaussian3.svg')
+    plt.savefig('./diagrams/dem_gaussian003.svg')
 
 def dem_two_point_sample(kernel_function, **args):
     """Make plots for the two data point sample example for explaining gaussian processes."""
@@ -445,7 +445,7 @@ def dem_two_point_sample(kernel_function, **args):
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
     #fig.colorbar(mappable=obj, ax=ax[1])
     #ax[1].set_axis('off')
-    plt.savefig('./diagrams/dem_two_point_sample0.svg')
+    plt.savefig('./diagrams/dem_two_point_sample000.svg')
 
     f = np.random.multivariate_normal(np.zeros(25), K, size=1)
     ax[0].plot(range(1, 26), f.flatten(), 'o', markersize=5, linewidth=3, color=[1., 0., 0.])
@@ -457,10 +457,10 @@ def dem_two_point_sample(kernel_function, **args):
     ax[0].set_xlim(xlim)
     ax[0].set_xlabel('$i$', fontsize=20)
     ax[0].set_ylabel('$f$', fontsize=20)
-    plt.savefig('./diagrams/dem_two_point_sample1.svg')
+    plt.savefig('./diagrams/dem_two_point_sample001.svg')
 
     ax[0].plot(np.array([1, 2]), [f[0,0], f[0,1]], 'o', markersize=10, linewidth=5, color=hcolor)
-    plt.savefig('./diagrams/dem_two_point_sample2.svg')
+    plt.savefig('./diagrams/dem_two_point_sample002.svg')
     #plt.Circle?
 
     obj = matrix(K, ax=ax[1], type='image', 
@@ -470,7 +470,7 @@ def dem_two_point_sample(kernel_function, **args):
                       highlight_color=hcolor)
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample3.svg')
+    plt.savefig('./diagrams/dem_two_point_sample003.svg')
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -483,7 +483,7 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 9])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample4.svg')
+    plt.savefig('./diagrams/dem_two_point_sample004.svg')
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -496,7 +496,7 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 4])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample5.svg')
+    plt.savefig('./diagrams/dem_two_point_sample005.svg')
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -509,7 +509,7 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 2])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample6.svg')
+    plt.savefig('./diagrams/dem_two_point_sample006.svg')
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -522,7 +522,7 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 1])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample7.svg')
+    plt.savefig('./diagrams/dem_two_point_sample007.svg')
 
     obj = matrix(K[:2, :2], ax=ax[1], type='values')
     ax[1].set_xlabel('$i$',fontsize=16)
