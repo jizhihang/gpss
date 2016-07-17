@@ -527,7 +527,7 @@ def dem_two_point_sample(kernel_function, **args):
     obj = matrix(K[:2, :2], ax=ax[1], type='values')
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample8.svg')
+    plt.savefig('./diagrams/dem_two_point_sample008.svg')
 
     ax[0].cla()
     two_point_pred(K, f.T, x, ax=ax[0],ind=[0, 1], stub='dem_two_point_sample', start=9)
