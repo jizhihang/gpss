@@ -35,18 +35,18 @@ L90 36" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:mi
    </g>
    <g id="patch_4">
     <path d="
-M90 315
-L343.636 315" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;"/>
+M90 36
+L343.636 36" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;"/>
    </g>
    <g id="patch_5">
     <path d="
-M90 36
+M343.636 315
 L343.636 36" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;"/>
    </g>
    <g id="patch_6">
     <path d="
-M343.636 315
-L343.636 36" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;"/>
+M90 315
+L343.636 315" style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;"/>
    </g>
    <g id="matplotlib.axis_1">
     <g id="xtick_1">
@@ -74,13 +74,6 @@ L0 4" id="m5a7d422ac3" style="stroke:#000000;stroke-width:0.5;"/>
       <!-- 0.0 -->
       <defs>
        <path d="
-M10.6875 12.4062
-L21 12.4062
-L21 0
-L10.6875 0
-z
-" id="BitstreamVeraSans-Roman-2e"/>
-       <path d="
 M31.7812 66.4062
 Q24.1719 66.4062 20.3281 58.9062
 Q16.5 51.4219 16.5 36.375
@@ -99,6 +92,13 @@ Q19.5312 -1.42188 13.0625 8.26562
 Q6.59375 17.9688 6.59375 36.375
 Q6.59375 54.8281 13.0625 64.5156
 Q19.5312 74.2188 31.7812 74.2188" id="BitstreamVeraSans-Roman-30"/>
+       <path d="
+M10.6875 12.4062
+L21 12.4062
+L21 0
+L10.6875 0
+z
+" id="BitstreamVeraSans-Roman-2e"/>
       </defs>
       <g transform="translate(82.71015625 326.5984375)scale(0.1 -0.1)">
        <use xlink:href="#BitstreamVeraSans-Roman-30"/>
@@ -473,7 +473,7 @@ L-4 0" id="md9a1c1a7cd" style="stroke:#000000;stroke-width:0.5;"/>
   </g>
   <g id="axes_2">
    <g clip-path="url(#pf6dab5210c)">
-    <image height="254.0" id="image8d0f585d12" width="255.0" x="394.363636364" xlink:href="data:image/png;base64,
+    <image height="254.0" id="imagea7a5cd2333" width="255.0" x="394.363636364" xlink:href="data:image/png;base64,
 iVBORw0KGgoAAAANSUhEUgAAAP8AAAD+CAYAAAD1VNNvAAAABHNCSVQICAgIfAhkiAAABZdJREFUeJzt3TGPVFUAhuGzhtrGzpLWWNkaN5pQ0tHwXywobPwH/ggKgr0SaqAxdMTShAIKG0jAjAUyOzH3ugdmdgd5n6fZLc5cbgJvzhZf2JPNZjOAnk+O/QLAcVx5+82tk5PvxhjfnveBTycf/OXkuWufTx68Pnnu5tyxx6dXp87dHjemzt2dfMFHD7+eOjfuzB0b9ybPPZg89/LZ5MEnk+eeTp57Pnnuz8lzLybPvZ4892ry3Afv183m1i9j7MQ/xvhmjPH9cd4HuCR/jTF+GcOP/ZAlfogSP0SJH6LED1HihyjxQ5T4IWo78pld7s3uq36bfYM/5o5d+3n2gXO+GL/PHTy9fdg/+Ku5Y4/G5BLw0B58Nnfu5cW+xuWZXQLO+v8sAd38ECV+iBI/RIkfosQPUeKHKPFDlPghSvwQtV34zf6fe7PLPUvAPVkCfmA+viWgmx+ixA9R4oco8UOU+CFK/BAlfogSP0SJH6K2C7/p35Y7ubSzBFxhCbjMEnDFxS0B3fwQJX6IEj9EiR+ixA9R4oco8UOU+CFK/BC1XfiN63MfmF7GWQIusgRcYQm4p3dfArr5IUr8ECV+iBI/RIkfosQPUeKHKPFDlPgh6mzhd/OwD7YE3I8l4ApLwINx80OU+CFK/BAlfogSP0SJH6LED1HihyjxQ9R24ff49OrUB6aXZ5MsAfdjCbjCEvBcbn6IEj9EiR+ixA9R4oco8UOU+CFK/BAlfojaLvxujxtzn5hcilkCrrAEXGQJePnc/BAlfogSP0SJH6LED1HihyjxQ5T4IUr8ELVd+N0d1w/7ZEvAvZ5nCbjMEvBw3PwQJX6IEj9EiR+ixA9R4oco8UOU+CFK/BC1Xfg9eji5nJpcYk2zBNzreZaAyywBz+fmhyjxQ5T4IUr8ECV+iBI/RIkfosQPUeKHqO3Cb9yZ+8D0csoScJEl4ApLwGUXuAR080OU+CFK/BAlfogSP0SJH6LED1HihyjxQ9TZwu/eYR9sCbjCEnCRJeCKC1wCuvkhSvwQJX6IEj9EiR+ixA9R4oco8UOU+CHqbOH34DgvYAm4whJwkSXgitkl4A43P0SJH6LED1HihyjxQ5T4IUr8ECV+iBI/RJ0t/F4+m/vEeyyJDsEScIUl4CJLwPO5+SFK/BAlfogSP0SJH6LED1HihyjxQ5T4Ieps4TeezH1i9reBWgIusgRcYQm46CKXgG5+iBI/RIkfosQPUeKHKPFDlPghSvwQJX6I2ln4PT3sky0Bl1kC7vU8S8Bl77MEdPNDlPghSvwQJX6IEj9EiR+ixA9R4oco8UPUzsLv+XHewBJwmSXgXs+zBPwvb/5Nu/khSvwQJX6IEj9EiR+ixA9R4oco8UOU+CFqZ+E3u7E6EkvAZZaAez0vtwQcY1j4QZz4IUr8ECV+iBI/RIkfosQPUeKHKPFD1M7C78Xx3uKQLAGXWQLu9byPawn44xjDzQ9Z4oco8UOU+CFK/BAlfogSP0SJH6LED1E7C7/Xkx+xBLwMloArLAEXvdPfx+mbL25+iBI/RIkfosQPUeKHKPFDlPghSvwQJX6I2ln4vTrwoy0BL4Ml4ApLwHUWftAmfogSP0SJH6LED1HihyjxQ5T4IUr8EHXl/CP/Zgm4yBJwmSXgXs+7kCXgT2++uPkhSvwQJX6IEj9EiR+ixA9R4oco8UOU+CHqPRZ+sywBF1kCLrME3Ot5s+83xhjX/vnq5oco8UOU+CFK/BAlfogSP0SJH6LED1Hih6gLXPjNsgRcZAm4zBJwr+eNYeEHeeKHKPFDlPghSvwQJX6IEj9EiR+ixA9RH8DCb5Yl4CJLwGWWgOdy80OU+CFK/BAlfogSP0SJH6LED1Hih6jdkc/9McYPx3oR4FLcf/vNyWazOeaLAEfix36I+huYwG68/f2NzgAAAABJRU5ErkJggg==" y="48.3181818182"/>
    </g>
    <g id="line2d_25">

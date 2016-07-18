@@ -320,8 +320,8 @@ def covariance_func(x, kernel_function,formula, shortname=None, longname=None, *
     out += '\n\n'
     out += '<p><center>' + formula + '</center></p>'
     out += '<table>\n  <tr><td><img src="./diagrams/' +filename + '.svg"></td><td><img src="./diagrams/' + filename + '.gif"></td></tr>\n</table>'
-
-    return out
+    fhand = open('./diagrams/' + filename + '.html', 'w')
+    fhand.write(out)
 
 
 def gaussian_height():
