@@ -339,6 +339,90 @@ def gaussian_height():
     ax2.set_ylabel('$p(h|\mu, \sigma^2)$', fontsize = 20)
     f2.savefig('./diagrams/gaussian_of_height.svg')
 
+
+def over_determined_system():
+    """Visualize what happens in an over determined system with linear regression."""
+    x = np.array([1, 3])
+    y = np.array([3, 1])
+
+    xvals = np.linspace(0, 5, 2);
+
+    m = (y[1]-y[0])/(x[1]-x[0]);
+    c = y[0]-m*x[0];
+
+    yvals = m*xvals+c;
+    xvals = np.linspace(0, 5, 2);
+
+    m = (y[1]-y[0])/(x[1]-x[0]);
+    c = y[0]-m*x[0];
+
+    yvals = m*xvals+c;
+
+    ylim = np.array([0, 5])
+    xlim = np.array([0, 5])
+
+    f, ax = plt.subplots(1,1,figsize=(5,5))
+    a = ax.plot(xvals, yvals, '-', linewidth=3);
+
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+
+    plt.xlabel('$x$', fontsize=30)
+    plt.ylabel('$y$',fontsize=30)
+    plt.text(4, 4, '$y=mx+c$',  horizontalalignment='center', verticalalignment='bottom', fontsize=30)
+    plt.savefig('diagrams/straight_line001.svg')
+    ctext = ax.text(0.15, c+0.15, '$c$',  horizontalalignment='center', verticalalignment='bottom', fontsize=20)
+    xl = np.array([1.5, 2.5])
+    yl = xl*m + c;
+    mhand = ax.plot([xl[0], xl[1]], [yl.min(), yl.min()], color=[0, 0, 0])
+    mhand2 = ax.plot([xl.min(), xl.min()], [yl[0], yl[1]], color=[0, 0, 0])
+    mtext = ax.text(xl.mean(), yl.min()-0.2, '$m$',  horizontalalignment='center', verticalalignment='bottom',fontsize=20);
+    plt.savefig('diagrams/straight_line002.svg')
+
+    a2 = ax.plot(x, y, '.', markersize=20, linewidth=3, color=[1, 0, 0])
+    plt.savefig('diagrams/straight_line003.svg')
+
+    xs = 2
+    ys = m*xs + c + 0.3
+
+    ast = ax.plot(xs, ys, '.', markersize=20, linewidth=3, color=[0, 1, 0])
+    plt.savefig('diagrams/straight_line004.svg')
+
+
+    m = (y[1]-ys)/(x[1]-xs);
+    c = ys-m*xs;
+    yvals = m*xvals+c;
+
+    for i in a:
+        i.set_visible(False)
+    for i in mhand:
+        i.set_visible(False)
+    for i in mhand2:
+        i.set_visible(False)
+    mtext.set_visible(False)
+    ctext.set_visible(False)
+    a3 = ax.plot(xvals, yvals, '-', linewidth=2, color=[0, 0, 1])
+    for i in ast:
+        i.set_color([1, 0, 0])
+    plt.savefig('diagrams/straight_line005.svg')
+
+    m = (ys-y[0])/(xs-x[0])
+    c = y[0]-m*x[0]
+    yvals = m*xvals+c
+
+    for i in a3:
+        i.set_visible(False)
+    a4 = ax.plot(xvals, yvals, '-', linewidth=2, color=[0, 0, 1]);
+    for i in ast:
+        i.set_color([1, 0, 0])
+    plt.savefig('diagrams/straight_line006.svg')
+    for i in a:
+        i.set_visible(True)
+    for i in a3:
+        i.set_visible(True)
+    plt.savefig('diagrams/straight_line007.svg')
+
+    
 def under_determined_system():
     """Visualise what happens in an under determined system with linear regression."""
     x = 1.
