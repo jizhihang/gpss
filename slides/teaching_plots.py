@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import mlai
+import IPython
+#from IPython.display import display, clear_output, HTML
 
 def matrix(A, ax=None,
                 bracket_width=3,
@@ -194,6 +196,56 @@ def base_plot(K, ind=[0, 1], ax=None,
     
     return cont, thandle, cent 
 
+
+def prob_diagram():
+    "Plot a diagram demonstrating marginal and joint probabilities."
+    marg = 0.05 # Distance between lines and boxes
+    indent = 0.1 # indent of n indicators
+    axis_indent = 0.3 # Axis indent.
+
+    x = np.random.randn(100, 1)+4
+    y = np.random.randn(100, 1)+2.5
+
+    fig, ax =plt.subplots(figsize=(8, 8))
+
+    # Basic plot set up.    
+    a = ax.plot(x, y, 'x', color = [1, 0, 0])
+    plt.axis('off')
+    ax.set_xlim([0-2*marg, 6+2*marg])
+    ax.set_ylim([0-2*marg, 4+2*marg])
+    #ax.set_visible(False)
+    for i in range(7):
+        ax.plot([i, i], [0, 5], color=[0, 0, 0])
+    for i in range(5):
+        ax.plot([0, 7], [i, i], color=[0, 0, 0])
+
+    for i in range(1, 5):
+        ax.text(-axis_indent, i-.5, str(i), horizontalalignment='center', fontsize=20)
+
+    for i in range(1,7):
+        ax.text(i-0.5, -axis_indent, str(i), horizontalalignment='center', fontsize=20)
+
+    # Box for y=4
+    ax.plot([-marg, 6+marg, 6+marg, -marg, -marg], [3-marg, 3-marg, 4+marg, 4+marg, 3-marg], linestyle=':', linewidth=2, color=[1, 0, 0])
+    ax.text(0.5, 4-indent, '$n_{Y=4}$', horizontalalignment='center', fontsize=20)
+
+    # Box for x=5
+    ax.plot([4-marg, 5+marg, 5+marg, 4-marg, 4-marg], [-marg, -marg, 4+marg, 4+marg, -marg], linestyle='--', linewidth=2, color=[1, 0, 0])
+    ax.text(4.5, 4-indent, '$n_{X=5}$', horizontalalignment='center', fontsize=20)
+
+    # Box for x=3, y=4
+    ax.plot([2-2*marg, 3+2*marg, 3+2*marg, 2-2*marg, 2-2*marg], [3-2*marg, 3-2*marg, 4+2*marg, 4+2*marg, 3-2*marg], linestyle='--', linewidth=2, color=[1, 0, 1])
+    ax.text(2.5, 4-indent, '$n_{X=3, Y=4}$', horizontalalignment='center', fontsize=20)
+
+
+    plt.text(1.5, 0.5, '$N$ crosses total', horizontalalignment='center', fontsize=20);
+
+    plt.text(3, -2*axis_indent, '$X$', fontsize=20)
+    plt.text(-2*axis_indent, 2, '$Y$', fontsize=20)
+    #ylabel('\variableTwo')
+
+    plt.savefig('./diagrams/prob_diagram.svg')
+
 def two_point_pred(K, f, x, ax=None, ind=[0, 1],
                         conditional_linestyle = '-',
                         conditional_linecolor = [1., 0., 0.],
@@ -240,6 +292,133 @@ def two_point_pred(K, f, x, ax=None, ind=[0, 1],
     #printLatexText(['\mappingFunction_1=' numsf2str(f[0], 3)], 'inputValueF1.tex', '../../../gp/tex/diagrams')
 
 
+
+def hyperplane_coordinates(w, b, plot_limits):
+    """Helper function for plotting the decision boundary of the perceptron."""
+    if abs(w[1])>abs(w[0]):
+        # If w[1]>w[0] in absolute value, plane is likely to be leaving tops of plot.
+        x0 = plot_limits['x']
+        x1 = -(b + x0*w[0])/w[1]
+    else:
+        # otherwise plane is likely to be leaving sides of plot.
+        x1 = plot_limits['y']
+        x0 = -(b + x1*w[1])/w[0]
+    return x0, x1
+
+def init_perceptron(f, ax, x_plus, x_minus, w, b, fontsize=18):
+    """Initialise a plot for showing the perceptron decision boundary."""
+
+    h = {}
+
+    ax[0].set_aspect('equal')
+    # Plot the data again
+    ax[0].plot(x_plus[:, 0], x_plus[:, 1], 'rx')
+    ax[0].plot(x_minus[:, 0], x_minus[:, 1], 'go')
+    plot_limits = {}
+    plot_limits['x'] = np.asarray(ax[0].get_xlim())
+    plot_limits['y'] = np.asarray(ax[0].get_ylim())
+    x0, x1 = hyperplane_coordinates(w, b, plot_limits)
+    strt = -b/w[1]
+
+    norm = w[0]*w[0] + w[1]*w[1]
+    offset0 = -w[0]/norm*b
+    offset1 = -w[1]/norm*b
+    h['arrow'] = ax[0].arrow(offset0, offset1, offset0+w[0], offset1+w[1], head_width=0.2)
+    # plot a line to represent the separating 'hyperplane'
+    h['plane'], = ax[0].plot(x0, x1, 'b-')
+    ax[0].set_xlim(plot_limits['x'])
+    ax[0].set_ylim(plot_limits['y'])
+    ax[0].set_xlabel('$x_0$', fontsize=fontsize)
+    ax[0].set_ylabel('$x_1$', fontsize=fontsize)
+    h['iter'] = ax[0].set_title('Update 0')
+    
+    bins = 15
+    f_minus = np.dot(x_minus, w)
+    f_plus = np.dot(x_plus, w)
+    ax[1].hist(f_plus, bins, alpha=0.5, label='+1', color='r')
+    ax[1].hist(f_minus, bins, alpha=0.5, label='-1', color='g')
+    ax[1].legend(loc='upper right')
+    return h
+
+def update_perceptron(h, f, ax, x_plus, x_minus, i, w, b):
+    """Update plots after decision boundary has changed."""
+    # Helper function for updating plots
+    # Re-plot the hyper plane 
+    plot_limits = {}
+    plot_limits['x'] = np.asarray(ax[0].get_xlim())
+    plot_limits['y'] = np.asarray(ax[0].get_ylim())
+    x0, x1 = hyperplane_coordinates(w, b, plot_limits)
+
+    # Add arrow to represent hyperplane.
+    h['arrow'].remove()
+    del(h['arrow'])
+    norm = (w[0]*w[0] + w[1]*w[1])
+    offset0 = -w[0]/norm*b
+    offset1 = -w[1]/norm*b
+    h['arrow'] = ax[0].arrow(offset0, offset1, offset0+w[0], offset1+w[1], head_width=0.2)
+    
+    h['plane'].set_xdata(x0)
+    h['plane'].set_ydata(x1)
+
+    h['iter'].set_text('Update ' + str(i))
+    ax[1].cla()
+    bins = 15
+    f_minus = np.dot(x_minus, w)
+    f_plus = np.dot(x_plus, w)
+    ax[1].hist(f_plus, bins, alpha=0.5, label='+1', color='r')
+    ax[1].hist(f_minus, bins, alpha=0.5, label='-1', color='g')
+    ax[1].legend(loc='upper right')
+
+    IPython.display.display(f)
+    IPython.display.clear_output(wait=True)
+    return h
+
+def regression_contour(f, ax, m_vals, c_vals, E_grid):
+    "Regression contour plot."
+    hcont = ax.contour(m_vals, c_vals, E_grid, levels=[0, 0.5, 1, 2, 4, 8, 16, 32, 64]) # this makes the contour plot 
+    plt.clabel(hcont, inline=1, fontsize=15) # this labels the contours.
+
+    ax.set_xlabel('$m$', fontsize=25)
+    ax.set_ylabel('$c$', fontsize=25)
+
+def init_regression(f, ax, x, y, m_vals, c_vals, E_grid, m_star, c_star, fontsize=20):
+    """Function to plot the initial regression fit and the error surface."""
+    h = {}
+    levels=[0, 0.5, 1, 2, 4, 8, 16, 32, 64]
+    h['cont'] = ax[0].contour(m_vals, c_vals, E_grid, levels=levels) # this makes the contour plot on axes 0.
+    plt.clabel(h['cont'], inline=1, fontsize=15)
+    ax[0].set_xlabel('$m$', fontsize=fontsize)
+    ax[0].set_ylabel('$c$', fontsize=fontsize)
+    h['msg'] = ax[0].set_title('Error Function', fontsize=fontsize)
+
+    # Set up plot
+    h['data'], = ax[1].plot(x, y, 'r.', markersize=10)
+    ax[1].set_xlabel('$x$', fontsize=fontsize)
+    ax[1].set_ylabel('$y$', fontsize=fontsize)
+    ax[1].set_ylim((-9, -1)) # set the y limits of the plot fixed
+    ax[1].set_title('Best Fit', fontsize=fontsize)
+
+    # Plot the current estimate of the best fit line
+    x_plot = np.asarray(ax[1].get_xlim()) # get the x limits of the plot for plotting the current best line fit.
+    y_plot = m_star*x_plot + c_star
+    h['fit'], = ax[1].plot(x_plot, y_plot, 'b-', linewidth=3)
+    return h
+
+def update_regression(h, f, ax, m_star, c_star, iteration):
+    """Update the regression plot with the latest fit and position in error space."""
+    ax[0].plot(m_star, c_star, 'g*')
+    x_plot = np.asarray(ax[1].get_xlim()) # get the x limits of the plot for plo
+    y_plot = m_star*x_plot + c_star
+    
+    # show the current status on the plot of the data
+    h['fit'].set_ydata(y_plot)
+    h['msg'].set_text('Iteration '+str(iteration))
+    display(f)
+    clear_output(wait=True)
+    time.sleep(0.25) # pause between iterations to see update
+    return h
+
+    
 def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_theta=200):
 
     """Make an animation of a circular sample from a covariance funciton."""
@@ -300,7 +479,7 @@ def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_t
         anim.save('./diagrams/' + filename, writer='imagemagick', fps=30)
 
 
-def covariance_func(x, kernel_function,formula, shortname=None, longname=None, **args):
+def covariance_func(x, kernel_function, formula, shortname=None, longname=None, **args):
     """Write a slide on a given covariance matrix."""
     fig, ax = plt.subplots(figsize=((5,5)))
     hcolor = [1., 0., 1.]
@@ -324,7 +503,7 @@ def covariance_func(x, kernel_function,formula, shortname=None, longname=None, *
     fhand.write(out)
 
 
-def gaussian_height():
+def gaussian_of_height():
     h = np.linspace(0, 2.5, 1000)
     sigma2 = 0.0225
     mu = 1.7
@@ -370,23 +549,23 @@ def over_determined_system():
     plt.xlabel('$x$', fontsize=30)
     plt.ylabel('$y$',fontsize=30)
     plt.text(4, 4, '$y=mx+c$',  horizontalalignment='center', verticalalignment='bottom', fontsize=30)
-    plt.savefig('diagrams/straight_line001.svg')
+    plt.savefig('diagrams/over_determined_system001.svg')
     ctext = ax.text(0.15, c+0.15, '$c$',  horizontalalignment='center', verticalalignment='bottom', fontsize=20)
     xl = np.array([1.5, 2.5])
     yl = xl*m + c;
     mhand = ax.plot([xl[0], xl[1]], [yl.min(), yl.min()], color=[0, 0, 0])
     mhand2 = ax.plot([xl.min(), xl.min()], [yl[0], yl[1]], color=[0, 0, 0])
     mtext = ax.text(xl.mean(), yl.min()-0.2, '$m$',  horizontalalignment='center', verticalalignment='bottom',fontsize=20);
-    plt.savefig('diagrams/straight_line002.svg')
+    plt.savefig('diagrams/over_determined_system002.svg')
 
     a2 = ax.plot(x, y, '.', markersize=20, linewidth=3, color=[1, 0, 0])
-    plt.savefig('diagrams/straight_line003.svg')
+    plt.savefig('diagrams/over_determined_system003.svg')
 
     xs = 2
     ys = m*xs + c + 0.3
 
     ast = ax.plot(xs, ys, '.', markersize=20, linewidth=3, color=[0, 1, 0])
-    plt.savefig('diagrams/straight_line004.svg')
+    plt.savefig('diagrams/over_determined_system004.svg')
 
 
     m = (y[1]-ys)/(x[1]-xs);
@@ -404,7 +583,7 @@ def over_determined_system():
     a3 = ax.plot(xvals, yvals, '-', linewidth=2, color=[0, 0, 1])
     for i in ast:
         i.set_color([1, 0, 0])
-    plt.savefig('diagrams/straight_line005.svg')
+    plt.savefig('diagrams/over_determined_system005.svg')
 
     m = (ys-y[0])/(xs-x[0])
     c = y[0]-m*x[0]
@@ -415,12 +594,12 @@ def over_determined_system():
     a4 = ax.plot(xvals, yvals, '-', linewidth=2, color=[0, 0, 1]);
     for i in ast:
         i.set_color([1, 0, 0])
-    plt.savefig('diagrams/straight_line006.svg')
+    plt.savefig('diagrams/over_determined_system006.svg')
     for i in a:
         i.set_visible(True)
     for i in a3:
         i.set_visible(True)
-    plt.savefig('diagrams/straight_line007.svg')
+    plt.savefig('diagrams/over_determined_system007.svg')
 
     
 def under_determined_system():
@@ -437,7 +616,7 @@ def under_determined_system():
     ax.set_xlim(xlim)
     ax.set_xlabel('$x$', fontsize=20)
     ax.set_ylabel('$y$', fontsize=20)
-    fig.savefig('./diagrams/one_point000.svg')
+    fig.savefig('./diagrams/under_determined_system000.svg')
 
     xvals = np.linspace(0, 3, 2)[:, None]
     count=0
@@ -448,7 +627,7 @@ def under_determined_system():
         ax.plot(xvals, yvals, '-', linewidth=2, color=[0., 0., 1.])
         if i < 9 or i == 100:
             count += 1
-            fig.savefig('./diagrams/one_point{count:0>3}.svg'.format(count=count))
+            fig.savefig('./diagrams/under_determined_system{count:0>3}.svg'.format(count=count))
 
 
 def bayes_update():
@@ -647,3 +826,187 @@ def logistic():
     ax.set_xlabel('$f_i$', fontsize=20)
     ax.set_ylabel('$g_i$', fontsize=20)
     plt.savefig('./diagrams/logistic.svg')
+
+
+def height(ax, h, ph):
+    "Plot height as a distribution."
+    ax.plot(h, ph, '-', color=[1, 0, 0], linewidth=3)
+    ax.set_xticks([1.25, 1.7, 2.15])
+    ax.set_yticks([1, 2, 3])
+    ax.set_xlabel('$h/m$', fontsize=20)
+    ax.set_ylabel('$p(h)$', fontsize=20)
+
+    ylim = ax.get_ylim()
+    xlim = ax.get_xlim()
+    ax.vlines(xlim[0], ylim[0], ylim[1], color='k')
+    ax.hlines(ylim[0], xlim[0], xlim[1], color='k')
+
+def weight(ax, w, pw):
+    "Plot weight as a distribution."
+    ax.plot(w, pw, '-', color=[0, 0, 1.], linewidth=3)
+    ax.set_xticks([55, 75, 95])
+    ax.set_yticks([0.02, 0.04, 0.06])
+    ax.set_xlabel('$w/kg$', fontsize=20)
+    ax.set_ylabel('$p(w)$', fontsize=20)
+
+    ylim = ax.get_ylim()
+    xlim = ax.get_xlim()
+    ax.vlines(xlim[0], ylim[0], ylim[1], color='k')
+    ax.hlines(ylim[0], xlim[0], xlim[1], color='k')
+
+def height_weight():
+    "Plot height and weight as Gaussians."
+    fig, ax = plt.subplots(1, 2, figsize=(10,5))
+
+    muh = 1.7
+    varh = 0.0225
+    muw = 75
+    varw = 36
+    tau = 2*np.pi
+    h = np.linspace(1.25, 2.15, 100)[:, None]
+    ph = 1/np.sqrt(tau*varh)*np.exp(-1/(2*varh)*(h - muh)**2)
+    height(ax[0], h, ph)
+
+    w = np.linspace(55, 95, 100)[:, None]
+    pw = 1/np.sqrt(tau*varw)*np.exp(-1/(2*varw)*(w - muw)**2)
+    weight(ax[1], w, pw)
+    #ax.set_box('off')
+    fig.savefig('./diagrams/height_weight_gaussian.svg')
+
+def independent_height_weight(num_samps=20):
+    "Plot independent Gaussians of height and weight."
+    fig, axs = plt.subplots(2, 4, figsize=(10, 5))
+    for a in axs.flatten():
+        a.set_axis_off()
+    ax=[]
+    ax.append(plt.subplot2grid((2,4), (0,0), colspan=2, rowspan=2))
+    ax.append(plt.subplot2grid((2,4), (0,3)))
+    ax.append(plt.subplot2grid((2,4), (1,3)))
+
+    ax[0].plot(muh, muw, 'x', color=[1., 0., 1.], markersize=5., linewidth=3)
+    theta = np.linspace(0, tau, 100)
+    xel = np.sin(theta)*np.sqrt(varh) + muh
+    yel = np.cos(theta)*np.sqrt(varw) + muw
+    ax[0].plot(xel, yel, '-', color=[1., 0., 1.], linewidth=3)
+    ax[0].set_xlim([h.min(), h.max()])
+    ax[0].set_ylim([w.min()+10, w.max()-10])
+    ax[0].set_yticks([65, 75, 85])
+    ax[0].set_xticks([1.25, 1.7, 2.15])
+    ax[0].set_xlabel('$h/m$', fontsize=20)
+    ax[0].set_ylabel('$w/kg$', fontsize=20)
+
+    ylim = ax[0].get_ylim()
+    xlim = ax[0].get_xlim()
+    ax[0].vlines(xlim[0], ylim[0], ylim[1], color=[0.,0.,0.])
+    ax[0].hlines(ylim[0], xlim[0], xlim[1], color=[0., 0., 0.])
+
+    height(ax[1], h, ph)
+    weight(ax[2], w, pw)
+    count = 0
+    for i in range(num_samps):
+        hval = np.random.normal(size=(1,1))*np.sqrt(varh) + muh
+        wval = np.random.normal(size=(1,1))*np.sqrt(varw) + muw
+        a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+        a0[0].set(color=[0.,0.,0.])
+        a1[0].set(color=[0.,0.,0.])
+        a2[0].set(color=[0.,0.,0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+def correlated_height_weight(num_samps=20):
+    "Plot correlated Gaussian distributions of height and weight."
+    fig, axs = plt.subplots(2, 4, figsize=(10, 5))
+    for a in axs.flatten():
+        a.set_axis_off()
+    ax=[]
+    ax.append(plt.subplot2grid((2,4), (0,0), colspan=2, rowspan=2))
+    ax.append(plt.subplot2grid((2,4), (0,3)))
+    ax.append(plt.subplot2grid((2,4), (1,3)))
+
+    covMat = np.asarray([[1, 0.995], [0.995, 1]])
+    fact = np.asarray([[np.sqrt(varh), 0], [0, np.sqrt(varw)]])
+    covMat = np.dot(np.dot(fact,covMat), fact)
+    _, R = np.linalg.eig(covMat)
+
+    ax[0].plot(muh, muw, 'x', color=[1., 0., 1.], markersize=5, linewidth=3)
+    theta = np.linspace(0, tau, 100)
+    xel = np.sin(theta)*np.sqrt(varh)
+    yel = np.cos(theta)*np.sqrt(varw)
+    vals = np.dot(R,np.vstack([xel, yel]))
+    ax[0].plot(vals[0, :]+muh, vals[1, :]+muw, '-', color=[1., 0., 1.], linewidth=3)
+    ax[0].set_xlim([h.min(), h.max()])
+    ax[0].set_ylim([w.min()+10, w.max()-10])
+    ax[0].set_yticks([65, 75, 85])
+    ax[0].set_xticks([1.25, 1.7, 2.15])
+    ax[0].set_xlabel('$h/m$', fontsize=20)
+    ax[0].set_ylabel('$w/kg$', fontsize=20)
+
+    plot_height(ax[1], h, ph)
+    plot_weight(ax[2], w, pw)
+    count = 0
+    for i in range(num_samps):
+        vec_s = np.dot(np.dot(R,fact),np.random.normal(size=(2,1)))
+        hval = vec_s[0] + muh
+        wval = vec_s[1] + muw
+        a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+        a0[0].set(color=[0.,0.,0.])
+        a1[0].set(color=[0.,0.,0.])
+        a2[0].set(color=[0.,0.,0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+
+def perceptron(x_plus, x_minus, learn_rate=0.1, max_iters=10000, max_updates=30, seed=100001):
+    w, b, x_select = mlai.init_perceptron(x_plus, x_minus, seed=seed)
+    updates = 0
+    count = 0
+    iterations = 0
+    setup=True
+    f2, ax2 = plt.subplots(1, 2, figsize=(10,5))
+    handle = init_perceptron(f2, ax2, x_plus, x_minus, w, b)
+    handle['plane'].set_visible(False)
+    handle['arrow'].set_visible(False)
+    handle['circle'] = plt.Circle((x_select[0], x_select[1]), 0.25, color='b', fill=False)
+    ax2[0].add_artist(handle['circle'])
+    f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))
+    extent = ax2[0].get_window_extent().transformed(f2.dpi_scale_trans.inverted())
+    f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)
+    count += 1
+    handle['plane'].set_visible(True)
+    handle['arrow'].set_visible(True)
+    f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))
+    f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)
+
+    while updates<max_updates and iterations<max_iters:
+        iterations += 1
+        w, b, x_select, updated = mlai.update_perceptron(w, b, x_plus, x_minus, learn_rate)
+        if updated:
+            updates += 1
+            count+=1
+            handle['circle'].center = x_select[0], x_select[1]
+            f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))     
+            f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)        
+            count+=1
+            handle = update_perceptron(handle, f2, ax2, x_plus, x_minus, updates, w, b)
+            f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))
+            f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)
+    print('Data passes:', iterations)
+    return count
