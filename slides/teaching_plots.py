@@ -4,6 +4,13 @@ import mlai
 import IPython
 #from IPython.display import display, clear_output, HTML
 
+tau = 2*np.pi
+
+two_figsize = (10, 5)
+one_figsize = (5, 5)
+big_figsize = (7, 7)
+wide_figsize = (7, 3.5)
+
 def matrix(A, ax=None,
                 bracket_width=3,
                 bracket_style='square',
@@ -206,7 +213,7 @@ def prob_diagram():
     x = np.random.randn(100, 1)+4
     y = np.random.randn(100, 1)+2.5
 
-    fig, ax =plt.subplots(figsize=(8, 8))
+    fig, ax =plt.subplots(figsize=big_figsize)
 
     # Basic plot set up.    
     a = ax.plot(x, y, 'x', color = [1, 0, 0])
@@ -245,51 +252,6 @@ def prob_diagram():
     #ylabel('\variableTwo')
 
     plt.savefig('./diagrams/prob_diagram.svg')
-
-def two_point_pred(K, f, x, ax=None, ind=[0, 1],
-                        conditional_linestyle = '-',
-                        conditional_linecolor = [1., 0., 0.],
-                        conditional_size = 4,
-                        fixed_linestyle = '-',
-                        fixed_linecolor = [0., 1., 0.],
-                        fixed_size = 4,stub=None, start=0):
-    
-    subK = K[ind][:, ind]
-    f = f[ind]
-    x = x[ind]
-
-    if ax is None:
-        ax = plt.gca()
-
-    cont, t, cent = base_plot(K, ind, ax=ax)
-    if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start))
-
-    x_lim = ax.get_xlim()
-    cont2 = plt.Line2D([x_lim[0], x_lim[1]], [f[0], f[0]], linewidth=fixed_size, linestyle=fixed_linestyle, color=fixed_linecolor)
-    ax.add_line(cont2)
-
-    if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+1))
-
-    # # Compute conditional mean and variance
-    f2_mean = subK[0, 1]/subK[0, 0]*f[0]
-    f2_var = subK[1, 1] - subK[0, 1]/subK[0, 0]*subK[0, 1]
-    x_val = np.linspace(x_lim[0], x_lim[1], 200)
-    pdf_val = 1/np.sqrt(2*np.pi*f2_var)*np.exp(-0.5*(x_val-f2_mean)*(x_val-f2_mean)/f2_var)
-    pdf = plt.Line2D(x_val, pdf_val+f[0], linewidth=conditional_size, linestyle=conditional_linestyle, color=conditional_linecolor)
-    ax.add_line(pdf)
-    if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+2))
-    
-    obs = plt.Line2D([f[1]], [f[0]], linewidth=10, markersize=10, color=fixed_linecolor, marker='o')
-    ax.add_line(obs)
-    if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+3))
-    
-    # load gpdistfunc
-
-    #printLatexText(['\mappingFunction_1=' numsf2str(f[0], 3)], 'inputValueF1.tex', '../../../gp/tex/diagrams')
 
 
 
@@ -373,6 +335,19 @@ def update_perceptron(h, f, ax, x_plus, x_minus, i, w, b):
     IPython.display.clear_output(wait=True)
     return h
 
+def contour_error(x, y, m_center, c_center, samps=100, width=6.):
+    "Compute the error on a grid as a function of m and c."
+    # create an array of linearly separated values around m_true
+    m_vals = np.linspace(m_center-width/2., m_center+width/2., samps) 
+    # create an array of linearly separated values ae
+    c_vals = np.linspace(c_center-width/2., c_center+width/2., samps) 
+    m_grid, c_grid = np.meshgrid(m_vals, c_vals)
+    E_grid = np.zeros((samps, samps))
+    for i in range(samps):
+        for j in range(samps):
+            E_grid[i, j] = ((y - m_grid[i, j]*x - c_grid[i, j])**2).sum()
+    return m_vals, c_vals, E_grid
+    
 def regression_contour(f, ax, m_vals, c_vals, E_grid):
     "Regression contour plot."
     hcont = ax.contour(m_vals, c_vals, E_grid, levels=[0, 0.5, 1, 2, 4, 8, 16, 32, 64]) # this makes the contour plot 
@@ -413,112 +388,59 @@ def update_regression(h, f, ax, m_star, c_star, iteration):
     # show the current status on the plot of the data
     h['fit'].set_ydata(y_plot)
     h['msg'].set_text('Iteration '+str(iteration))
-    display(f)
-    clear_output(wait=True)
-    time.sleep(0.25) # pause between iterations to see update
+    IPython.display.display(f)
+    IPython.display.clear_output(wait=True)
     return h
 
-    
-def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_theta=200):
+def regression_contour_fit(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m_star = 0.0, c_star = -5.0, max_iters=1000):
+    "Plot an evolving contour plot of regression optimisation."
+    m_vals, c_vals, E_grid = contour_error(x, y, m_center, c_center, samps=100)
 
-    """Make an animation of a circular sample from a covariance funciton."""
+    f, ax = plt.subplots(1, 2, figsize=two_figsize) # this is to create 'side by side axes'
+    # first let's plot the error surface
+    handle = init_regression(f, ax, x, y, m_vals, c_vals, E_grid, m_star, c_star)
+    plt.savefig('./diagrams/regression_contour_fit000.svg')
 
-    tau = 2*np.pi
-    n = K.shape[0]
+    count=0
+    for i in range(max_iters): # do max_iters iterations
+        # compute the gradients
+        c_grad = -2*(y-m_star*x - c_star).sum()
+        m_grad = -2*(x*(y-m_star*x - c_star)).sum()
 
+        # update the parameters
+        m_star = m_star - learn_rate*m_grad
+        c_star = c_star - learn_rate*c_grad
+        # update the location of our current best guess on the contour plot
+        if i<10 or ((i<100 and not i % 10) or (i<1000 and not i % 100)): 
+            handle = update_regression(handle, f, ax, m_star, c_star, i)
+            count+=1
+            plt.savefig('./diagrams/regression_contour_fit{count:0>3}.svg'.format(count=count))        
+    return count
 
-    R1 = np.random.normal(size=(n, num_samps))
-    U1 = np.dot(R1,np.diag(1/np.sqrt(np.sum(R1*R1, axis=0))))
-    R2 = np.random.normal(size=(n, num_samps))
-    R2 = R2 - np.dot(U1,np.diag(np.sum(R2*U1, axis=0)))
-    R2 = np.dot(R2,np.diag(np.sqrt(np.sum(R1*R1, axis=0))/np.sqrt(np.sum(R2*R2, axis=0))))
-    L = np.linalg.cholesky(K+np.diag(np.ones((n)))*1e-6)
+def regression_contour_sgd(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m_star = 0.0, c_star = -5.0, max_iters=4000):
+    "Plot evolution of the solution of linear regression via SGD."
+    m_vals, c_vals, E_grid = contour_error(x, y, m_center, c_center, samps=100)
 
+    f, ax = plt.subplots(1, 2, figsize=two_figsize) # this is to create 'side by side axes'
+    handle = init_regression(f, ax, x, y, m_vals, c_vals, E_grid, m_star, c_star)
+    count=0
+    plt.savefig('./diagrams/regression_sgd_contour_fit{count:0>3}.svg'.format(count=count))
+    for i in range(max_iters): # do max_iters iterations (parameter updates)
+        # choose a random point
+        index = np.random.randint(x.shape[0]-1)
 
-    from matplotlib import animation
-    x_lim = (0, 1)
-    y_lim = (-2, 2)
-    
-    if fig is None:
-        fig, _ = plt.subplots(figsize=(7,7))
-    rect = 0, 0, 1., 1.
-    ax = fig.add_axes(rect)
-    ax.set_xlim(x_lim)
-    ax.set_ylim(y_lim)
+        # update m
+        m_star = m_star + 2*learn_rate*(x[index]*(y[index]-m_star*x[index] - c_star))
+        # update c
+        c_star = c_star + 2*learn_rate*(y[index]-m_star*x[index] - c_star)
 
-    line = []
-    for i in range(num_samps):
-        l, = ax.plot([], [], lw=2)
-        line.append(l)
-        
-    # initialization function: plot the background of each frame
-    def init():
-        for i in range(num_samps):
-            line[i].set_data([], [])
-        return line,
+        if i<10 or ((i<100 and not i % 10) or (not i % 100)): 
+            handle = update_regression(handle, f, ax, m_star, c_star, i)
+            count+=1
+            plt.savefig('./diagrams/regression_sgd_contour_fit{count:0>3}.svg'.format(count=count))
+    return count
 
-    # animation function.  This is called sequentially
-    def animate(i):
-        theta = float(i)/num_theta*tau
-        xc = np.cos(theta)
-        yc = np.sin(theta)
-        # generate 2d basis in t-d space
-        coord = xc*R1 + yc*R2
-        y = np.dot(L,coord)
-        if mu is not None:
-            y = y + mu
-        x = np.linspace(0, 1, n)
-        for i in range(num_samps):
-            line[i].set_data(x, y[:, i])
-        return line,
-
-    # call the animator.  blit=True means only re-draw the parts that have changed.
-    anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                   frames=num_theta, blit=True)
-    if filename is not None:
-        anim.save('./diagrams/' + filename, writer='imagemagick', fps=30)
-
-
-def covariance_func(x, kernel_function, formula, shortname=None, longname=None, **args):
-    """Write a slide on a given covariance matrix."""
-    fig, ax = plt.subplots(figsize=((5,5)))
-    hcolor = [1., 0., 1.]
-    K = kernel_function(x, x, **args)
-    obj = matrix(K, ax=ax, type='image', bracket_style='boxes')
-
-    if shortname is not None:
-        filename = shortname + '_covariance'
-    else:
-        filename = 'covariance'
-    plt.savefig('./diagrams/' + filename + '.svg')
-
-    ax.cla()
-    kern_circular_sample(K, fig=fig, filename=filename + '.gif')
-
-    out = '<h2>' + longname + ' Covariance</h2>'
-    out += '\n\n'
-    out += '<p><center>' + formula + '</center></p>'
-    out += '<table>\n  <tr><td><img src="./diagrams/' +filename + '.svg"></td><td><img src="./diagrams/' + filename + '.gif"></td></tr>\n</table>'
-    fhand = open('./diagrams/' + filename + '.html', 'w')
-    fhand.write(out)
-
-
-def gaussian_of_height():
-    h = np.linspace(0, 2.5, 1000)
-    sigma2 = 0.0225
-    mu = 1.7
-    p = 1./np.sqrt(2*np.pi*sigma2)*np.exp(-(h-mu)**2/(2*sigma2**2))
-    f2, ax2 = plt.subplots(figsize=(7, 3.5))
-    ax2.plot(h, p, 'b-', linewidth=3)
-    ylim = (0, 3)
-    ax2.vlines(mu, ylim[0], ylim[1], colors='r', linewidth=3)
-    ax2.set_ylim(ylim)
-    ax2.set_xlim(1.4, 2.0)
-    ax2.set_xlabel('$h/m$', fontsize=20)
-    ax2.set_ylabel('$p(h|\mu, \sigma^2)$', fontsize = 20)
-    f2.savefig('./diagrams/gaussian_of_height.svg')
-
-
+#################### Session 3 ####################
 def over_determined_system():
     """Visualize what happens in an over determined system with linear regression."""
     x = np.array([1, 3])
@@ -540,7 +462,7 @@ def over_determined_system():
     ylim = np.array([0, 5])
     xlim = np.array([0, 5])
 
-    f, ax = plt.subplots(1,1,figsize=(5,5))
+    f, ax = plt.subplots(1,1,figsize=one_figsize)
     a = ax.plot(xvals, yvals, '-', linewidth=3);
 
     ax.set_xlim(xlim)
@@ -601,12 +523,252 @@ def over_determined_system():
         i.set_visible(True)
     plt.savefig('diagrams/over_determined_system007.svg')
 
+def gaussian_of_height():
+    "Gaussian density representing heights."
+    h = np.linspace(0, 2.5, 1000)
+    sigma2 = 0.0225
+    mu = 1.7
+    p = 1./np.sqrt(2*np.pi*sigma2)*np.exp(-(h-mu)**2/(2*sigma2**2))
+    f2, ax2 = plt.subplots(figsize=wide_figsize)
+    ax2.plot(h, p, 'b-', linewidth=3)
+    ylim = (0, 3)
+    ax2.vlines(mu, ylim[0], ylim[1], colors='r', linewidth=3)
+    ax2.set_ylim(ylim)
+    ax2.set_xlim(1.4, 2.0)
+    ax2.set_xlabel('$h/m$', fontsize=20)
+    ax2.set_ylabel('$p(h|\mu, \sigma^2)$', fontsize = 20)
+    f2.savefig('./diagrams/gaussian_of_height.svg')
     
+#################### Session 5 ####################
+
+def marathon_fit(model, value, param_name, param_range, xlim, fig, ax, x_val=None, y_val=None, objective=None, directory='./diagrams', fontsize=20, objective_ylim=None, prefix='olympic', title=None, png_plot=False, samps=130):
+    "Plot fit of the marathon data alongside error."
+    if title is None:
+        title = model.objective_name
+        
+    ax[0].cla()
+    ax[0].plot(model.X, model.y, 'o', color=[1, 0, 0], markersize=6, linewidth=3)
+    if x_val is not None and y_val is not None:
+        ax[0].plot(x_val, y_val, 'o', color=[0, 1, 0], markersize=6, linewidth=3)
+        
+    ylim = ax[0].get_ylim()
+
+    x_pred = np.linspace(xlim[0], xlim[1], samps)[:, None]
+    y_pred, y_var = model.predict(x_pred)
+    
+    ax[0].plot(x_pred, y_pred, color=[0, 0, 1], linewidth=2)
+    if y_var is not None:
+        y_err = np.sqrt(y_var)*2
+        ax[0].plot(x_pred, y_pred + y_err, '--', color=[0, 0, 1], linewidth=1)
+        ax[0].plot(x_pred, y_pred - y_err, '--', color=[0, 0, 1], linewidth=1)
+        
+    #ax[0].set_xlabel('year', fontsize=fontsize)
+    ax[0].set_ylim(ylim)
+    plt.sca(ax[0])
+
+    xlim = ax[0].get_xlim()
+
+    if objective is not None:
+        ax[1].cla()
+        params = range(*param_range)
+        ax[1].plot(np.array(params), objective, 'o', color=[1, 0, 0], markersize=6, linewidth=3)
+        if len(param_range)>2:
+            xlow = param_range[0]-param_range[2]
+            xhigh = param_range[1]
+        else:
+            xlow = param_range[0]-1
+            xhigh = param_range[1]
+        ax[1].set_xlim((xlow, xhigh))
+        ax[1].set_ylim(objective_ylim)
+        ax[1].set_xlabel(param_name.replace('_', ' '), fontsize=fontsize)
+        if title is not None:
+            ax[1].set_title(title, fontsize=fontsize)
+
+    filename = '{prefix}_{name}_{param_name}{value:0>3}'.format(prefix=prefix, name=model.name, param_name=param_name, value=value)
+    plt.savefig(directory + '/' +filename + '.svg')
+    if png_plot:
+        plt.savefig(directory + '/' +filename + '.png')
+
+
+
+def rmse_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None, xlim=None, plot_fit=marathon_fit, **kwargs):
+    "Fit a model and show RMSE error"
+    f, ax = plt.subplots(1, 2, figsize=two_figsize)
+    num_data = x.shape[0]
+    
+    params = range(*param_range)
+    ll = np.array([np.nan]*len(params))
+    ss = np.array([np.nan]*len(params))
+    count = 0
+    for param in params:
+        kwargs[param_name] = param
+        m = model(x, y, **kwargs)
+        m.fit()
+        ss[count] = m.objective()/num_data 
+        ll[count] = m.log_likelihood()
+        plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
+                 objective=ss, objective_ylim=objective_ylim,
+                 fig=f, ax=ax)
+        count += 1
+
+
+def holdout_fit(x, y, param_name, param_range, model=mlai.LM, val_start=20,
+                objective_ylim=None, xlim=None, plot_fit=marathon_fit,
+                permute=True, prefix='olympic_val', **kwargs):
+    "Fit a model and show holdout error."
+
+    f, ax = plt.subplots(1, 2, figsize=two_figsize)
+
+    num_data = x.shape[0]
+
+    if permute:
+        perm = np.random.permutation(num_data)
+        x_tr = x[perm[:val_start], :]
+        x_val = x[perm[val_start:], :]
+        y_tr = y[perm[:val_start], :]
+        y_val = y[perm[val_start:], :]
+    else:
+        x_tr = x[:val_start, :]
+        x_val = x[val_start:, :]
+        y_tr = y[:val_start, :]
+        y_val = y[val_start:, :]
+    num_val_data = x_val.shape[0]
+
+    params = range(*param_range)
+    ll = np.array([np.nan]*len(params))
+    ss = np.array([np.nan]*len(params))
+    ss_val = np.array([np.nan]*len(params))
+    count = 0
+    for param in params:    
+        kwargs[param_name] = param
+        m = model(x_tr, y_tr, **kwargs)
+        m.fit()
+        f_val, _ = m.predict(x_val)
+        ss[count] = m.objective()
+        ss_val[count] = ((y_val-f_val)**2).mean() 
+        ll[count] = m.log_likelihood()
+        plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
+                 objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
+                 fig=f, ax=ax, prefix=prefix,
+                 title="Hold Out Validation",
+                 x_val=x_val, y_val=y_val)
+        count+=1
+
+def loo_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None, 
+            xlim=None, plot_fit=marathon_fit, prefix='olympic_loo', **kwargs):
+    "Fit a model and show leave one out error"
+    f, ax = plt.subplots(1, 2, figsize=two_figsize)
+
+
+    num_data = x.shape[0]
+    num_parts = num_data
+    partitions = []
+    for part in range(num_parts):
+        train_ind = list(range(part))
+        train_ind.extend(range(part+1,num_data))
+        val_ind = [part]
+        partitions.append((train_ind, val_ind))
+
+        params = range(*param_range)        
+        ll = np.array([np.nan]*len(params))
+        ss = np.array([np.nan]*len(params))
+        ss_val = np.array([np.nan]*len(params))
+        count = 0
+        for param in params:
+            kwargs[param_name] = param
+            ss_temp = 0.
+            ll_temp = 0.
+            ss_val_temp = 0.
+            for part, (train_ind, val_ind) in enumerate(partitions):
+                x_tr = x[train_ind, :]
+                x_val = x[val_ind, :]
+                y_tr = y[train_ind, :]
+                y_val = y[val_ind, :]
+                num_val_data = x_val.shape[0]
+                m = model(x_tr, y_tr, **kwargs)
+                m.fit()
+                ss_temp = m.objective()
+                ll_temp = m.log_likelihood()
+                f_val, _ = m.predict(x_val)
+                ss_val_temp += ((y_val-f_val)**2).mean() 
+                plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
+                         objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
+                         fig=f, ax=ax, prefix='olympic_loo{part:0>3}'.format(part=part),
+                         x_val=x_val, y_val=y_val)
+            ss[count] = ss_temp/(num_parts)
+            ll[count] = ll_temp/(num_parts)
+            ss_val[count] = ss_val_temp/(num_parts)
+            ax[1].cla()
+            plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
+                     objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
+                     fig=f, ax=ax, prefix='olympic_loo{part:0>3}'.format(part=len(partitions)),
+                     title="Leave One Out Validation",
+                     x_val=x_val, y_val=y_val)
+            count+=1
+
+
+def cv_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None, 
+               xlim=None, plot_fit=marathon_fit, num_parts=5, **kwargs):
+    f, ax = plt.subplots(1, 2, figsize=two_figsize)
+    num_data = x.shape[0]
+    partitions = []
+    ind = list(np.random.permutation(num_data))
+    start = 0
+    for part in range(num_parts):
+        end = round((float(num_data)/num_parts)*(part+1))
+        train_ind = ind[:start]
+        train_ind.extend(ind[end:])
+        val_ind = ind[start:end]
+        partitions.append((train_ind, val_ind))
+        start = end
+
+    params = range(*param_range)
+    ll = np.array([np.nan]*len(params))
+    ss = np.array([np.nan]*len(params))
+    ss_val = np.array([np.nan]*len(params))
+    count = 0
+    for param in params:
+        ss_val_temp = 0.
+        ll_temp = 0.
+        ss_temp = 0.
+        kwargs[param_name] = param
+        for part, (train_ind, val_ind) in enumerate(partitions):
+            x_tr = x[train_ind, :]
+            x_val = x[val_ind, :]
+            y_tr = y[train_ind, :]
+            y_val = y[val_ind, :]
+            num_val_data = x_val.shape[0]
+
+            m = model(x_tr, y_tr, **kwargs)
+            m.fit()
+            ss_temp += m.objective()
+            ll_temp += m.log_likelihood()
+            f_val, _ = m.predict(x_val)
+            ss_val_temp += ((y_val-f_val)**2).mean() 
+            plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
+                     objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
+                     fig=f, ax=ax, prefix='olympic_{num_parts}cv{part:0>2}'.format(num_parts=num_parts, part=part),
+                     title='{num_parts}-fold Cross Validation'.format(num_parts=num_parts),
+                     x_val=x_val, y_val=y_val)
+        ss_val[count] = ss_val_temp/(num_parts)
+        ss[count] = ss_temp/(num_parts)
+        ll[count] = ll_temp/(num_parts)
+        count+=1
+        ax[1].cla()
+        plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
+                 objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
+                 fig=f, ax=ax,
+                 prefix='olympic_{num_parts}cv{num_partitions:0>2}'.format(num_parts=num_parts, num_partitions=num_parts),
+                 title='{num_parts}-fold Cross Validation'.format(num_parts=num_parts),
+                 x_val=x_val, y_val=y_val)
+            
+#################### Session 6 ####################    
+
 def under_determined_system():
     """Visualise what happens in an under determined system with linear regression."""
     x = 1.
     y = 3.
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=one_figsize)
     ax.plot(x, y, 'o', markersize=10, linewidth=3, color=[1., 0., 0.])
     ax.set_xticks([0, 1, 2, 3])
     ax.set_yticks([0, 1, 2, 3, 4, 5])
@@ -632,7 +794,7 @@ def under_determined_system():
 
 def bayes_update():
     "Visualise the updating of a posterior of Bayesian inference for a Gaussian lieklihood."""
-    fig, ax = plt.subplots(figsize=(7,7))
+    fig, ax = plt.subplots(figsize=one_figsize)
     num_points = 1000
     x_max = 4
     x_min = -3
@@ -675,7 +837,7 @@ def bayes_update():
     ylim = [0, np.vstack([approx_curve, likelihood_curve, 
                           posterior_curve, prior_curve]).max()*1.1]
 
-    fig, ax = plt.subplots(figsize=(7,7))
+    fig, ax = plt.subplots(figsize=one_figsize)
 
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
@@ -697,9 +859,276 @@ def bayes_update():
     plt.text(3.5, 0.75, '$\mathcal{N}\\left(c|\\frac{y-mx}{1+\\sigma^2\\alpha_1},(\\sigma^{-2}+\\alpha_1^{-1})^{-1}\\right)$', horizontalalignment='center') 
     plt.savefig('./diagrams/dem_gaussian003.svg')
 
+def height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36):
+    "Plot height and weight as Gaussians."
+    if h is None:
+        h = np.linspace(1.25, 2.15, 100)[:, None]
+    if w is None:
+        w = np.linspace(55, 95, 100)[:, None]
+
+    ph = 1/np.sqrt(tau*varh)*np.exp(-1/(2*varh)*(h - muh)**2)
+    pw = 1/np.sqrt(tau*varw)*np.exp(-1/(2*varw)*(w - muw)**2)
+
+    fig, ax = plt.subplots(1, 2, figsize=two_figsize)
+
+    height(ax[0], h, ph)
+
+    weight(ax[1], w, pw)
+    fig.savefig('./diagrams/height_weight_gaussian.svg')
+
+def independent_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36, num_samps=20):
+    "Plot independent Gaussians of height and weight."
+    if h is None:
+        h = np.linspace(1.25, 2.15, 100)[:, None]
+    if w is None:
+        w = np.linspace(55, 95, 100)[:, None]
+
+    ph = 1/np.sqrt(tau*varh)*np.exp(-1/(2*varh)*(h - muh)**2)
+    pw = 1/np.sqrt(tau*varw)*np.exp(-1/(2*varw)*(w - muw)**2)
+    
+    fig, axs = plt.subplots(2, 4, figsize=two_figsize)
+    for a in axs.flatten():
+        a.set_axis_off()
+    ax=[]
+    ax.append(plt.subplot2grid((2,4), (0,0), colspan=2, rowspan=2))
+    ax.append(plt.subplot2grid((2,4), (0,3)))
+    ax.append(plt.subplot2grid((2,4), (1,3)))
+
+    ax[0].plot(muh, muw, 'x', color=[1., 0., 1.], markersize=5., linewidth=3)
+    theta = np.linspace(0, tau, 100)
+    xel = np.sin(theta)*np.sqrt(varh) + muh
+    yel = np.cos(theta)*np.sqrt(varw) + muw
+    ax[0].plot(xel, yel, '-', color=[1., 0., 1.], linewidth=3)
+    ax[0].set_xlim([h.min(), h.max()])
+    ax[0].set_ylim([w.min()+10, w.max()-10])
+    ax[0].set_yticks([65, 75, 85])
+    ax[0].set_xticks([1.25, 1.7, 2.15])
+    ax[0].set_xlabel('$h/m$', fontsize=20)
+    ax[0].set_ylabel('$w/kg$', fontsize=20)
+
+    ylim = ax[0].get_ylim()
+    xlim = ax[0].get_xlim()
+    ax[0].vlines(xlim[0], ylim[0], ylim[1], color=[0.,0.,0.])
+    ax[0].hlines(ylim[0], xlim[0], xlim[1], color=[0., 0., 0.])
+
+    height(ax[1], h, ph)
+    weight(ax[2], w, pw)
+    count = 0
+    for i in range(num_samps):
+        hval = np.random.normal(size=(1,1))*np.sqrt(varh) + muh
+        wval = np.random.normal(size=(1,1))*np.sqrt(varw) + muw
+        a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+        a0[0].set(color=[0.,0.,0.])
+        a1[0].set(color=[0.,0.,0.])
+        a2[0].set(color=[0.,0.,0.])
+        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+def correlated_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36, num_samps=20):
+    "Plot correlated Gaussian distributions of height and weight."
+    if h is None:
+        h = np.linspace(1.25, 2.15, 100)[:, None]
+    if w is None:
+        w = np.linspace(55, 95, 100)[:, None]
+
+    ph = 1/np.sqrt(tau*varh)*np.exp(-1/(2*varh)*(h - muh)**2)
+    pw = 1/np.sqrt(tau*varw)*np.exp(-1/(2*varw)*(w - muw)**2)
+
+    fig, axs = plt.subplots(2, 4, figsize=two_figsize)
+    for a in axs.flatten():
+        a.set_axis_off()
+    ax=[]
+    ax.append(plt.subplot2grid((2,4), (0,0), colspan=2, rowspan=2))
+    ax.append(plt.subplot2grid((2,4), (0,3)))
+    ax.append(plt.subplot2grid((2,4), (1,3)))
+
+    covMat = np.asarray([[1, 0.995], [0.995, 1]])
+    fact = np.asarray([[np.sqrt(varh), 0], [0, np.sqrt(varw)]])
+    covMat = np.dot(np.dot(fact,covMat), fact)
+    _, R = np.linalg.eig(covMat)
+
+    ax[0].plot(muh, muw, 'x', color=[1., 0., 1.], markersize=5, linewidth=3)
+    theta = np.linspace(0, tau, 100)
+    xel = np.sin(theta)*np.sqrt(varh)
+    yel = np.cos(theta)*np.sqrt(varw)
+    vals = np.dot(R,np.vstack([xel, yel]))
+    ax[0].plot(vals[0, :]+muh, vals[1, :]+muw, '-', color=[1., 0., 1.], linewidth=3)
+    ax[0].set_xlim([h.min(), h.max()])
+    ax[0].set_ylim([w.min()+10, w.max()-10])
+    ax[0].set_yticks([65, 75, 85])
+    ax[0].set_xticks([1.25, 1.7, 2.15])
+    ax[0].set_xlabel('$h/m$', fontsize=20)
+    ax[0].set_ylabel('$w/kg$', fontsize=20)
+
+    height(ax[1], h, ph)
+    weight(ax[2], w, pw)
+    count = 0
+    for i in range(num_samps):
+        vec_s = np.dot(np.dot(R,fact),np.random.normal(size=(2,1)))
+        hval = vec_s[0] + muh
+        wval = vec_s[1] + muw
+        a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+        a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+        a0[0].set(color=[0.,0.,0.])
+        a1[0].set(color=[0.,0.,0.])
+        a2[0].set(color=[0.,0.,0.])
+        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        count+=1
+
+
+
+
+#################### Session 11 ####################
+
+def two_point_pred(K, f, x, ax=None, ind=[0, 1],
+                        conditional_linestyle = '-',
+                        conditional_linecolor = [1., 0., 0.],
+                        conditional_size = 4,
+                        fixed_linestyle = '-',
+                        fixed_linecolor = [0., 1., 0.],
+                        fixed_size = 4,stub=None, start=0):
+    
+    subK = K[ind][:, ind]
+    f = f[ind]
+    x = x[ind]
+
+    if ax is None:
+        ax = plt.gca()
+
+    cont, t, cent = base_plot(K, ind, ax=ax)
+    if stub is not None:
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start))
+
+    x_lim = ax.get_xlim()
+    cont2 = plt.Line2D([x_lim[0], x_lim[1]], [f[0], f[0]], linewidth=fixed_size, linestyle=fixed_linestyle, color=fixed_linecolor)
+    ax.add_line(cont2)
+
+    if stub is not None:
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+1))
+
+    # # Compute conditional mean and variance
+    f2_mean = subK[0, 1]/subK[0, 0]*f[0]
+    f2_var = subK[1, 1] - subK[0, 1]/subK[0, 0]*subK[0, 1]
+    x_val = np.linspace(x_lim[0], x_lim[1], 200)
+    pdf_val = 1/np.sqrt(2*np.pi*f2_var)*np.exp(-0.5*(x_val-f2_mean)*(x_val-f2_mean)/f2_var)
+    pdf = plt.Line2D(x_val, pdf_val+f[0], linewidth=conditional_size, linestyle=conditional_linestyle, color=conditional_linecolor)
+    ax.add_line(pdf)
+    if stub is not None:
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+2))
+    
+    obs = plt.Line2D([f[1]], [f[0]], linewidth=10, markersize=10, color=fixed_linecolor, marker='o')
+    ax.add_line(obs)
+    if stub is not None:
+        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+3))
+    
+    # load gpdistfunc
+
+    #printLatexText(['\mappingFunction_1=' numsf2str(f[0], 3)], 'inputValueF1.tex', '../../../gp/tex/diagrams')
+
+
+def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_theta=200):
+
+    """Make an animation of a circular sample from a covariance funciton."""
+
+    n = K.shape[0]
+
+
+    R1 = np.random.normal(size=(n, num_samps))
+    U1 = np.dot(R1,np.diag(1/np.sqrt(np.sum(R1*R1, axis=0))))
+    R2 = np.random.normal(size=(n, num_samps))
+    R2 = R2 - np.dot(U1,np.diag(np.sum(R2*U1, axis=0)))
+    R2 = np.dot(R2,np.diag(np.sqrt(np.sum(R1*R1, axis=0))/np.sqrt(np.sum(R2*R2, axis=0))))
+    L = np.linalg.cholesky(K+np.diag(np.ones((n)))*1e-6)
+
+
+    from matplotlib import animation
+    x_lim = (0, 1)
+    y_lim = (-2, 2)
+    
+    if fig is None:
+        fig, _ = plt.subplots(figsize=one_figsize)
+    rect = 0, 0, 1., 1.
+    ax = fig.add_axes(rect)
+    ax.set_xlim(x_lim)
+    ax.set_ylim(y_lim)
+
+    line = []
+    for i in range(num_samps):
+        l, = ax.plot([], [], lw=2)
+        line.append(l)
+        
+    # initialization function: plot the background of each frame
+    def init():
+        for i in range(num_samps):
+            line[i].set_data([], [])
+        return line,
+
+    # animation function.  This is called sequentially
+    def animate(i):
+        theta = float(i)/num_theta*tau
+        xc = np.cos(theta)
+        yc = np.sin(theta)
+        # generate 2d basis in t-d space
+        coord = xc*R1 + yc*R2
+        y = np.dot(L,coord)
+        if mu is not None:
+            y = y + mu
+        x = np.linspace(0, 1, n)
+        for i in range(num_samps):
+            line[i].set_data(x, y[:, i])
+        return line,
+
+    # call the animator.  blit=True means only re-draw the parts that have changed.
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                   frames=num_theta, blit=True)
+    if filename is not None:
+        anim.save('./diagrams/' + filename, writer='imagemagick', fps=30)
+
+
+def covariance_func(x, kernel_function, formula, shortname=None, longname=None, **args):
+    """Write a slide on a given covariance matrix."""
+    fig, ax = plt.subplots(figsize=one_figsize)
+    hcolor = [1., 0., 1.]
+    K = kernel_function(x, x, **args)
+    obj = matrix(K, ax=ax, type='image', bracket_style='boxes')
+
+    if shortname is not None:
+        filename = shortname + '_covariance'
+    else:
+        filename = 'covariance'
+    plt.savefig('./diagrams/' + filename + '.svg')
+
+    ax.cla()
+    kern_circular_sample(K, fig=fig, filename=filename + '.gif')
+
+    out = '<h2>' + longname + ' Covariance</h2>'
+    out += '\n\n'
+    out += '<p><center>' + formula + '</center></p>'
+    out += '<table>\n  <tr><td><img src="./diagrams/' +filename + '.svg"></td><td><img src="./diagrams/' + filename + '.gif"></td></tr>\n</table>'
+    fhand = open('./diagrams/' + filename + '.html', 'w')
+    fhand.write(out)
+
+    
 def dem_two_point_sample(kernel_function, **args):
     """Make plots for the two data point sample example for explaining gaussian processes."""
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=((10,5)))
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(two_figsize))
     hcolor = [1., 0., 1.]
     x = np.linspace(-1, 1, 25)[:, None]
     K = kernel_function(x, x, **args)
@@ -801,7 +1230,7 @@ def dem_two_point_sample(kernel_function, **args):
 
 def poisson():
     from scipy.stats import poisson
-    fig, ax = plt.subplots(figsize=(14,7))
+    fig, ax = plt.subplots(figsize=two_figsize)
     y = np.asarray(range(0, 16))
     p1 = poisson.pmf(y, mu=1.)
     p3 = poisson.pmf(y, mu=3.)
@@ -817,7 +1246,7 @@ def poisson():
     plt.savefig('./diagrams/poisson.svg')
 
 def logistic():
-    fig, ax = plt.subplots(figsize=(14,7))
+    fig, ax = plt.subplots(figsize=two_figsize)
     f = np.linspace(-8, 8, 100)
     g = 1/(1+np.exp(-f))
     
@@ -854,125 +1283,6 @@ def weight(ax, w, pw):
     ax.vlines(xlim[0], ylim[0], ylim[1], color='k')
     ax.hlines(ylim[0], xlim[0], xlim[1], color='k')
 
-def height_weight():
-    "Plot height and weight as Gaussians."
-    fig, ax = plt.subplots(1, 2, figsize=(10,5))
-
-    muh = 1.7
-    varh = 0.0225
-    muw = 75
-    varw = 36
-    tau = 2*np.pi
-    h = np.linspace(1.25, 2.15, 100)[:, None]
-    ph = 1/np.sqrt(tau*varh)*np.exp(-1/(2*varh)*(h - muh)**2)
-    height(ax[0], h, ph)
-
-    w = np.linspace(55, 95, 100)[:, None]
-    pw = 1/np.sqrt(tau*varw)*np.exp(-1/(2*varw)*(w - muw)**2)
-    weight(ax[1], w, pw)
-    #ax.set_box('off')
-    fig.savefig('./diagrams/height_weight_gaussian.svg')
-
-def independent_height_weight(num_samps=20):
-    "Plot independent Gaussians of height and weight."
-    fig, axs = plt.subplots(2, 4, figsize=(10, 5))
-    for a in axs.flatten():
-        a.set_axis_off()
-    ax=[]
-    ax.append(plt.subplot2grid((2,4), (0,0), colspan=2, rowspan=2))
-    ax.append(plt.subplot2grid((2,4), (0,3)))
-    ax.append(plt.subplot2grid((2,4), (1,3)))
-
-    ax[0].plot(muh, muw, 'x', color=[1., 0., 1.], markersize=5., linewidth=3)
-    theta = np.linspace(0, tau, 100)
-    xel = np.sin(theta)*np.sqrt(varh) + muh
-    yel = np.cos(theta)*np.sqrt(varw) + muw
-    ax[0].plot(xel, yel, '-', color=[1., 0., 1.], linewidth=3)
-    ax[0].set_xlim([h.min(), h.max()])
-    ax[0].set_ylim([w.min()+10, w.max()-10])
-    ax[0].set_yticks([65, 75, 85])
-    ax[0].set_xticks([1.25, 1.7, 2.15])
-    ax[0].set_xlabel('$h/m$', fontsize=20)
-    ax[0].set_ylabel('$w/kg$', fontsize=20)
-
-    ylim = ax[0].get_ylim()
-    xlim = ax[0].get_xlim()
-    ax[0].vlines(xlim[0], ylim[0], ylim[1], color=[0.,0.,0.])
-    ax[0].hlines(ylim[0], xlim[0], xlim[1], color=[0., 0., 0.])
-
-    height(ax[1], h, ph)
-    weight(ax[2], w, pw)
-    count = 0
-    for i in range(num_samps):
-        hval = np.random.normal(size=(1,1))*np.sqrt(varh) + muh
-        wval = np.random.normal(size=(1,1))*np.sqrt(varw) + muw
-        a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-        a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-        a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-
-        a0[0].set(color=[0.,0.,0.])
-        a1[0].set(color=[0.,0.,0.])
-        a2[0].set(color=[0.,0.,0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-
-def correlated_height_weight(num_samps=20):
-    "Plot correlated Gaussian distributions of height and weight."
-    fig, axs = plt.subplots(2, 4, figsize=(10, 5))
-    for a in axs.flatten():
-        a.set_axis_off()
-    ax=[]
-    ax.append(plt.subplot2grid((2,4), (0,0), colspan=2, rowspan=2))
-    ax.append(plt.subplot2grid((2,4), (0,3)))
-    ax.append(plt.subplot2grid((2,4), (1,3)))
-
-    covMat = np.asarray([[1, 0.995], [0.995, 1]])
-    fact = np.asarray([[np.sqrt(varh), 0], [0, np.sqrt(varw)]])
-    covMat = np.dot(np.dot(fact,covMat), fact)
-    _, R = np.linalg.eig(covMat)
-
-    ax[0].plot(muh, muw, 'x', color=[1., 0., 1.], markersize=5, linewidth=3)
-    theta = np.linspace(0, tau, 100)
-    xel = np.sin(theta)*np.sqrt(varh)
-    yel = np.cos(theta)*np.sqrt(varw)
-    vals = np.dot(R,np.vstack([xel, yel]))
-    ax[0].plot(vals[0, :]+muh, vals[1, :]+muw, '-', color=[1., 0., 1.], linewidth=3)
-    ax[0].set_xlim([h.min(), h.max()])
-    ax[0].set_ylim([w.min()+10, w.max()-10])
-    ax[0].set_yticks([65, 75, 85])
-    ax[0].set_xticks([1.25, 1.7, 2.15])
-    ax[0].set_xlabel('$h/m$', fontsize=20)
-    ax[0].set_ylabel('$w/kg$', fontsize=20)
-
-    plot_height(ax[1], h, ph)
-    plot_weight(ax[2], w, pw)
-    count = 0
-    for i in range(num_samps):
-        vec_s = np.dot(np.dot(R,fact),np.random.normal(size=(2,1)))
-        hval = vec_s[0] + muh
-        wval = vec_s[1] + muw
-        a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-        a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-        a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-
-        a0[0].set(color=[0.,0.,0.])
-        a1[0].set(color=[0.,0.,0.])
-        a2[0].set(color=[0.,0.,0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
-        count+=1
-
 
 def perceptron(x_plus, x_minus, learn_rate=0.1, max_iters=10000, max_updates=30, seed=100001):
     w, b, x_select = mlai.init_perceptron(x_plus, x_minus, seed=seed)
@@ -980,7 +1290,7 @@ def perceptron(x_plus, x_minus, learn_rate=0.1, max_iters=10000, max_updates=30,
     count = 0
     iterations = 0
     setup=True
-    f2, ax2 = plt.subplots(1, 2, figsize=(10,5))
+    f2, ax2 = plt.subplots(1, 2, figsize=two_figsize)
     handle = init_perceptron(f2, ax2, x_plus, x_minus, w, b)
     handle['plane'].set_visible(False)
     handle['arrow'].set_visible(False)
