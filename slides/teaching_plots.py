@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mlai
 import IPython
+import os
 #from IPython.display import display, clear_output, HTML
 
 tau = 2*np.pi
@@ -10,12 +11,32 @@ two_figsize = (10, 5)
 one_figsize = (5, 5)
 big_figsize = (7, 7)
 wide_figsize = (7, 3.5)
+hcolor = [1., 0., 1.] # highlighting color
+
+# def write_plots(filename=filename, filebase, directory=None, width=700, height=500, kwargs):
+#     """Display a series of plots controlled by sliders. The function relies on Python string format functionality to index through a series of plots."""
+#     args = collections.OrderedDict(kwargs)
+    
+#     def write_figure(filebase, directory, **kwargs):
+#         """Helper function to load in the relevant plot for display."""
+#         filename = filebase.format(**kwargs)
+#         if directory is not None:
+#             filename = directory + '/' + filename
+#         return "<img src='{filename}'>".format(filename=filename)
+#     meta = '{data-transition="None"}'
+#     out = '### ' + meta
+#     for name, val in kwargs.items():
+#         if isinstance(val,list) or isinstance(
+#         out += '\n\n' + write_figure(filebase=filebase, directory=directory, **kwargs) + '\n\n'
+#         for 
+#     interact(show_figure, filebase=fixed(filebase), directory=fixed(directory), **kwargs)
+
 
 def matrix(A, ax=None,
                 bracket_width=3,
                 bracket_style='square',
                 type='values',
-                colormap=False,
+                colormap=None,
                 highlight=False,
                 highlight_row=None,
                 highlight_col=None,
@@ -24,13 +45,20 @@ def matrix(A, ax=None,
                 zoom=False,
                 zoom_row=None,
                 zoom_col=None,
-                bracket_color=[0,0,0]):
+                bracket_color=[0,0,0],
+                fontsize=16):
     """Plot a matrix for visualisation in a slide or piece of text."""
     
     if ax is None:
         ax = plt.gca()
-        
-    nrows, ncols = A.shape
+
+    if colormap is not None:
+        plt.set_cmap(colormap) 
+
+    A = np.asarray(A)
+    
+    nrows = A.shape[0]
+    ncols = A.shape[1]
     
   
     x_lim = np.array([-0.75, ncols-0.25])
@@ -45,15 +73,15 @@ def matrix(A, ax=None,
     elif type == 'values':
         for i in range(nrows):
             for j in range(ncols):
-                handle.append(ax.text(j, i, str(A[i, j]), horizontalalignment='center'))
+                handle.append(ax.text(j, i, str(A[i, j]), horizontalalignment='center', fontsize=fontsize))
     elif type == 'entries':
         for i in range(nrows):
             for j in range(ncols):
-                if isstr(A[i,j]):
-                    handle.append(ax.text(j, i, A[i, j], horizontalalignment='center'))
+                if isinstance(A[i,j], str):
+                    handle.append(ax.text(j, i, A[i, j], horizontalalignment='center', fontsize=fontsize))
                     
                 else:  
-                    handle.append(ax.text(j+1, i+1, ' ', horizontalalignment='center'))
+                    handle.append(ax.text(j+1, i+1, ' ', horizontalalignment='center', fontsize=fontsize))
     elif type == 'patch':
         for i in range(nrows):
             for j in range(ncols):
@@ -143,8 +171,6 @@ def matrix(A, ax=None,
     ax.set_yticks([])
     ax.invert_yaxis() #axis ij, axis equal, axis off
 
-    if colormap:
-        plt.colormap(obj=options.colormap) 
              
     return handle 
 
@@ -204,7 +230,7 @@ def base_plot(K, ind=[0, 1], ax=None,
     return cont, thandle, cent 
 
 
-def prob_diagram():
+def prob_diagram(diagrams='./diagrams'):
     "Plot a diagram demonstrating marginal and joint probabilities."
     marg = 0.05 # Distance between lines and boxes
     indent = 0.1 # indent of n indicators
@@ -251,7 +277,7 @@ def prob_diagram():
     plt.text(-2*axis_indent, 2, '$Y$', fontsize=20)
     #ylabel('\variableTwo')
 
-    plt.savefig('./diagrams/prob_diagram.svg')
+    plt.savefig(os.path.join(diagrams, 'prob_diagram.svg'), transparent=True)
 
 
 
@@ -392,14 +418,14 @@ def update_regression(h, f, ax, m_star, c_star, iteration):
     IPython.display.clear_output(wait=True)
     return h
 
-def regression_contour_fit(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m_star = 0.0, c_star = -5.0, max_iters=1000):
+def regression_contour_fit(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m_star = 0.0, c_star = -5.0, max_iters=1000, diagrams='./diagrams'):
     "Plot an evolving contour plot of regression optimisation."
     m_vals, c_vals, E_grid = contour_error(x, y, m_center, c_center, samps=100)
 
     f, ax = plt.subplots(1, 2, figsize=two_figsize) # this is to create 'side by side axes'
     # first let's plot the error surface
     handle = init_regression(f, ax, x, y, m_vals, c_vals, E_grid, m_star, c_star)
-    plt.savefig('./diagrams/regression_contour_fit000.svg')
+    plt.savefig(os.path.join(diagrams, 'regression_contour_fit000.svg'), transparent=True)
 
     count=0
     for i in range(max_iters): # do max_iters iterations
@@ -414,17 +440,17 @@ def regression_contour_fit(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m
         if i<10 or ((i<100 and not i % 10) or (i<1000 and not i % 100)): 
             handle = update_regression(handle, f, ax, m_star, c_star, i)
             count+=1
-            plt.savefig('./diagrams/regression_contour_fit{count:0>3}.svg'.format(count=count))        
+            plt.savefig(os.path.join(diagrams, 'regression_contour_fit{count:0>3}.svg').format(count=count))        
     return count
 
-def regression_contour_sgd(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m_star = 0.0, c_star = -5.0, max_iters=4000):
+def regression_contour_sgd(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m_star = 0.0, c_star = -5.0, max_iters=4000, diagrams='./diagrams'):
     "Plot evolution of the solution of linear regression via SGD."
     m_vals, c_vals, E_grid = contour_error(x, y, m_center, c_center, samps=100)
 
     f, ax = plt.subplots(1, 2, figsize=two_figsize) # this is to create 'side by side axes'
     handle = init_regression(f, ax, x, y, m_vals, c_vals, E_grid, m_star, c_star)
     count=0
-    plt.savefig('./diagrams/regression_sgd_contour_fit{count:0>3}.svg'.format(count=count))
+    plt.savefig(os.path.join(diagrams, 'regression_sgd_contour_fit{count:0>3}.svg').format(count=count))
     for i in range(max_iters): # do max_iters iterations (parameter updates)
         # choose a random point
         index = np.random.randint(x.shape[0]-1)
@@ -437,11 +463,11 @@ def regression_contour_sgd(x, y, learn_rate=0.01, m_center=1.4, c_center=-3.1, m
         if i<10 or ((i<100 and not i % 10) or (not i % 100)): 
             handle = update_regression(handle, f, ax, m_star, c_star, i)
             count+=1
-            plt.savefig('./diagrams/regression_sgd_contour_fit{count:0>3}.svg'.format(count=count))
+            plt.savefig(os.path.join(diagrams, 'regression_sgd_contour_fit{count:0>3}.svg').format(count=count))
     return count
 
 #################### Session 3 ####################
-def over_determined_system():
+def over_determined_system(diagrams='./diagrams'):
     """Visualize what happens in an over determined system with linear regression."""
     x = np.array([1, 3])
     y = np.array([3, 1])
@@ -471,23 +497,23 @@ def over_determined_system():
     plt.xlabel('$x$', fontsize=30)
     plt.ylabel('$y$',fontsize=30)
     plt.text(4, 4, '$y=mx+c$',  horizontalalignment='center', verticalalignment='bottom', fontsize=30)
-    plt.savefig('diagrams/over_determined_system001.svg')
+    plt.savefig(os.path.join(diagrams, 'over_determined_system001.svg'), transparent=True)
     ctext = ax.text(0.15, c+0.15, '$c$',  horizontalalignment='center', verticalalignment='bottom', fontsize=20)
     xl = np.array([1.5, 2.5])
     yl = xl*m + c;
     mhand = ax.plot([xl[0], xl[1]], [yl.min(), yl.min()], color=[0, 0, 0])
     mhand2 = ax.plot([xl.min(), xl.min()], [yl[0], yl[1]], color=[0, 0, 0])
     mtext = ax.text(xl.mean(), yl.min()-0.2, '$m$',  horizontalalignment='center', verticalalignment='bottom',fontsize=20);
-    plt.savefig('diagrams/over_determined_system002.svg')
+    plt.savefig(os.path.join(diagrams, 'over_determined_system002.svg'), transparent=True)
 
     a2 = ax.plot(x, y, '.', markersize=20, linewidth=3, color=[1, 0, 0])
-    plt.savefig('diagrams/over_determined_system003.svg')
+    plt.savefig(os.path.join(diagrams, 'over_determined_system003.svg'), transparent=True)
 
     xs = 2
     ys = m*xs + c + 0.3
 
     ast = ax.plot(xs, ys, '.', markersize=20, linewidth=3, color=[0, 1, 0])
-    plt.savefig('diagrams/over_determined_system004.svg')
+    plt.savefig(os.path.join(diagrams, 'over_determined_system004.svg'), transparent=True)
 
 
     m = (y[1]-ys)/(x[1]-xs);
@@ -505,7 +531,7 @@ def over_determined_system():
     a3 = ax.plot(xvals, yvals, '-', linewidth=2, color=[0, 0, 1])
     for i in ast:
         i.set_color([1, 0, 0])
-    plt.savefig('diagrams/over_determined_system005.svg')
+    plt.savefig(os.path.join(diagrams, 'over_determined_system005.svg'), transparent=True)
 
     m = (ys-y[0])/(xs-x[0])
     c = y[0]-m*x[0]
@@ -516,14 +542,14 @@ def over_determined_system():
     a4 = ax.plot(xvals, yvals, '-', linewidth=2, color=[0, 0, 1]);
     for i in ast:
         i.set_color([1, 0, 0])
-    plt.savefig('diagrams/over_determined_system006.svg')
+    plt.savefig(os.path.join(diagrams, 'over_determined_system006.svg'), transparent=True)
     for i in a:
         i.set_visible(True)
     for i in a3:
         i.set_visible(True)
-    plt.savefig('diagrams/over_determined_system007.svg')
+    plt.savefig(os.path.join(diagrams, 'over_determined_system007.svg'), transparent=True)
 
-def gaussian_of_height():
+def gaussian_of_height(diagrams='./diagrams'):
     "Gaussian density representing heights."
     h = np.linspace(0, 2.5, 1000)
     sigma2 = 0.0225
@@ -537,11 +563,11 @@ def gaussian_of_height():
     ax2.set_xlim(1.4, 2.0)
     ax2.set_xlabel('$h/m$', fontsize=20)
     ax2.set_ylabel('$p(h|\mu, \sigma^2)$', fontsize = 20)
-    f2.savefig('./diagrams/gaussian_of_height.svg')
+    f2.savefig(os.path.join(diagrams, 'gaussian_of_height.svg'), transparent=True)
     
 #################### Session 5 ####################
 
-def marathon_fit(model, value, param_name, param_range, xlim, fig, ax, x_val=None, y_val=None, objective=None, directory='./diagrams', fontsize=20, objective_ylim=None, prefix='olympic', title=None, png_plot=False, samps=130):
+def marathon_fit(model, value, param_name, param_range, xlim, fig, ax, x_val=None, y_val=None, objective=None, diagrams='./diagrams', fontsize=20, objective_ylim=None, prefix='olympic', title=None, png_plot=False, samps=130):
     "Plot fit of the marathon data alongside error."
     if title is None:
         title = model.objective_name
@@ -571,7 +597,8 @@ def marathon_fit(model, value, param_name, param_range, xlim, fig, ax, x_val=Non
     if objective is not None:
         ax[1].cla()
         params = range(*param_range)
-        ax[1].plot(np.array(params), objective, 'o', color=[1, 0, 0], markersize=6, linewidth=3)
+        for name, vals in objective.items():
+            ax[1].plot(np.array(params), vals, 'o', color=[1, 0, 0], markersize=6, linewidth=3)
         if len(param_range)>2:
             xlow = param_range[0]-param_range[2]
             xhigh = param_range[1]
@@ -585,36 +612,37 @@ def marathon_fit(model, value, param_name, param_range, xlim, fig, ax, x_val=Non
             ax[1].set_title(title, fontsize=fontsize)
 
     filename = '{prefix}_{name}_{param_name}{value:0>3}'.format(prefix=prefix, name=model.name, param_name=param_name, value=value)
-    plt.savefig(directory + '/' +filename + '.svg')
+    plt.savefig(os.path.join(diagrams, filename + '.svg'), transparent=True)
     if png_plot:
-        plt.savefig(directory + '/' +filename + '.png')
+        plt.savefig(os.path.join(directory, filename + '.png'), transparent=True)
 
 
 
-def rmse_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None, xlim=None, plot_fit=marathon_fit, **kwargs):
+def rmse_fit(x, y, param_name, param_range, model=mlai.LM, plot_objectives={'RMSE':mlai.MapModel.rmse}, objective_ylim=None, xlim=None, plot_fit=marathon_fit, diagrams='./diagrams', **kwargs):
     "Fit a model and show RMSE error"
     f, ax = plt.subplots(1, 2, figsize=two_figsize)
     num_data = x.shape[0]
     
     params = range(*param_range)
-    ll = np.array([np.nan]*len(params))
-    ss = np.array([np.nan]*len(params))
+
     count = 0
     for param in params:
         kwargs[param_name] = param
         m = model(x, y, **kwargs)
         m.fit()
-        ss[count] = m.objective()/num_data 
-        ll[count] = m.log_likelihood()
+        # compute appropriate objective. 
+        for name, plot_objective in plot_objectives.items():
+            obj[name][count] = plot_objective(m)
+            
         plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
-                 objective=ss, objective_ylim=objective_ylim,
-                 fig=f, ax=ax)
+                 objective=obj, objective_ylim=objective_ylim,
+                 fig=f, ax=ax, diagrams=diagrams)
         count += 1
 
 
 def holdout_fit(x, y, param_name, param_range, model=mlai.LM, val_start=20,
                 objective_ylim=None, xlim=None, plot_fit=marathon_fit,
-                permute=True, prefix='olympic_val', **kwargs):
+                permute=True, prefix='olympic_val', diagrams='./diagrams', **kwargs):
     "Fit a model and show holdout error."
 
     f, ax = plt.subplots(1, 2, figsize=two_figsize)
@@ -651,11 +679,11 @@ def holdout_fit(x, y, param_name, param_range, model=mlai.LM, val_start=20,
                  objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
                  fig=f, ax=ax, prefix=prefix,
                  title="Hold Out Validation",
-                 x_val=x_val, y_val=y_val)
+                 x_val=x_val, y_val=y_val, diagrams=diagrams)
         count+=1
 
 def loo_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None, 
-            xlim=None, plot_fit=marathon_fit, prefix='olympic_loo', **kwargs):
+            xlim=None, plot_fit=marathon_fit, prefix='olympic_loo', diagrams='./diagrams', **kwargs):
     "Fit a model and show leave one out error"
     f, ax = plt.subplots(1, 2, figsize=two_figsize)
 
@@ -694,7 +722,7 @@ def loo_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None,
                 plot_fit(model=m, value=param, xlim=xlim, param_name=param_name, param_range=param_range,
                          objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
                          fig=f, ax=ax, prefix='olympic_loo{part:0>3}'.format(part=part),
-                         x_val=x_val, y_val=y_val)
+                         x_val=x_val, y_val=y_val, diagrams=diagrams)
             ss[count] = ss_temp/(num_parts)
             ll[count] = ll_temp/(num_parts)
             ss_val[count] = ss_val_temp/(num_parts)
@@ -703,12 +731,12 @@ def loo_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None,
                      objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
                      fig=f, ax=ax, prefix='olympic_loo{part:0>3}'.format(part=len(partitions)),
                      title="Leave One Out Validation",
-                     x_val=x_val, y_val=y_val)
+                     x_val=x_val, y_val=y_val, diagrams=diagrams)
             count+=1
 
 
 def cv_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None, 
-               xlim=None, plot_fit=marathon_fit, num_parts=5, **kwargs):
+               xlim=None, plot_fit=marathon_fit, num_parts=5, diagrams='./diagrams', **kwargs):
     f, ax = plt.subplots(1, 2, figsize=two_figsize)
     num_data = x.shape[0]
     partitions = []
@@ -749,7 +777,7 @@ def cv_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None,
                      objective=np.sqrt(ss_val), objective_ylim=objective_ylim,
                      fig=f, ax=ax, prefix='olympic_{num_parts}cv{part:0>2}'.format(num_parts=num_parts, part=part),
                      title='{num_parts}-fold Cross Validation'.format(num_parts=num_parts),
-                     x_val=x_val, y_val=y_val)
+                     x_val=x_val, y_val=y_val, diagrams=diagrams)
         ss_val[count] = ss_val_temp/(num_parts)
         ss[count] = ss_temp/(num_parts)
         ll[count] = ll_temp/(num_parts)
@@ -760,11 +788,11 @@ def cv_fit(x, y, param_name, param_range, model=mlai.LM, objective_ylim=None,
                  fig=f, ax=ax,
                  prefix='olympic_{num_parts}cv{num_partitions:0>2}'.format(num_parts=num_parts, num_partitions=num_parts),
                  title='{num_parts}-fold Cross Validation'.format(num_parts=num_parts),
-                 x_val=x_val, y_val=y_val)
+                 x_val=x_val, y_val=y_val, diagrams=diagrams)
             
 #################### Session 6 ####################    
 
-def under_determined_system():
+def under_determined_system(diagrams='./diagrams'):
     """Visualise what happens in an under determined system with linear regression."""
     x = 1.
     y = 3.
@@ -778,7 +806,7 @@ def under_determined_system():
     ax.set_xlim(xlim)
     ax.set_xlabel('$x$', fontsize=20)
     ax.set_ylabel('$y$', fontsize=20)
-    fig.savefig('./diagrams/under_determined_system000.svg')
+    fig.savefig(os.path.join(diagrams, 'under_determined_system000.svg'), transparent=True, frameon=True)
 
     xvals = np.linspace(0, 3, 2)[:, None]
     count=0
@@ -789,15 +817,15 @@ def under_determined_system():
         ax.plot(xvals, yvals, '-', linewidth=2, color=[0., 0., 1.])
         if i < 9 or i == 100:
             count += 1
-            fig.savefig('./diagrams/under_determined_system{count:0>3}.svg'.format(count=count))
+            fig.savefig(os.path.join(diagrams, 'under_determined_system{count:0>3}.svg').format(count=count), transparent=True, frameon=True)
 
 
-def bayes_update():
+def bayes_update(diagrams='./diagrams'):
     "Visualise the updating of a posterior of Bayesian inference for a Gaussian lieklihood."""
-    fig, ax = plt.subplots(figsize=one_figsize)
+    fig, ax = plt.subplots(figsize=two_figsize)
     num_points = 1000
-    x_max = 4
-    x_min = -3
+    x_max = 6
+    x_min = -1
 
     y = np.array([[1.]])
     prior_mean = np.array([[0.]])
@@ -837,29 +865,29 @@ def bayes_update():
     ylim = [0, np.vstack([approx_curve, likelihood_curve, 
                           posterior_curve, prior_curve]).max()*1.1]
 
-    fig, ax = plt.subplots(figsize=one_figsize)
+    fig, ax = plt.subplots(figsize=two_figsize)
 
     ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
     ax.set_yticks([0, 1, 2, 3, 4, 5])
+    ax.set_ylim(ylim)
 
     ax.vlines(xlim[0], ylim[0], ylim[1], color=[0., 0., 0.]) 
     ax.hlines(ylim[0], xlim[0], xlim[1], color=[0., 0., 0.]) 
 
     ax.plot(f, prior_curve, color=[1, 0., 0.], linewidth=3)
-    ax.text(3.5, 2, '$p(c) = \mathcal{N}(c|0, \\alpha_1)$', horizontalalignment='center') 
-    plt.savefig('./diagrams/dem_gaussian001.svg')
+    ax.text(3.5, 2, '$p(c) = \mathcal{N}(c|0, \\alpha_1)$', horizontalalignment='center', fontsize=20) 
+    plt.savefig(os.path.join(diagrams, 'dem_gaussian001.svg'), transparent=True)
 
     ax.plot(f, likelihood_curve, color=[0, 0, 1], linewidth=3)
-    ax.text(3.5, 1.5,'$p(y|m, c, x, \\sigma^2)=\mathcal{N}(y|mx+c,\\sigma^2)$', horizontalalignment='center') 
-    plt.savefig('./diagrams/dem_gaussian002.svg')
+    ax.text(3.5, 1.5,'$p(y|m, c, x, \\sigma^2)=\mathcal{N}(y|mx+c,\\sigma^2)$', horizontalalignment='center', fontsize=20) 
+    plt.savefig(os.path.join(diagrams, 'dem_gaussian002.svg'), transparent=True)
 
     ax.plot(f, posterior_curve, color=[1, 0, 1], linewidth=3)
-    ax.text(3.5, 1, '$p(c|y, m, x, \\sigma^2)=$', horizontalalignment='center') 
-    plt.text(3.5, 0.75, '$\mathcal{N}\\left(c|\\frac{y-mx}{1+\\sigma^2\\alpha_1},(\\sigma^{-2}+\\alpha_1^{-1})^{-1}\\right)$', horizontalalignment='center') 
-    plt.savefig('./diagrams/dem_gaussian003.svg')
+    ax.text(3.5, 1, '$p(c|y, m, x, \\sigma^2)=$', horizontalalignment='center', fontsize=20) 
+    plt.text(3.5, 0.65, '$\mathcal{N}\\left(c|\\frac{y-mx}{1+\\sigma^2\\alpha_1},(\\sigma^{-2}+\\alpha_1^{-1})^{-1}\\right)$', horizontalalignment='center', fontsize=20)
+    plt.savefig(os.path.join(diagrams, 'dem_gaussian003.svg'), transparent=True)
 
-def height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36):
+def height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36, diagrams='./diagrams'):
     "Plot height and weight as Gaussians."
     if h is None:
         h = np.linspace(1.25, 2.15, 100)[:, None]
@@ -874,9 +902,9 @@ def height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36):
     height(ax[0], h, ph)
 
     weight(ax[1], w, pw)
-    fig.savefig('./diagrams/height_weight_gaussian.svg')
+    fig.savefig(os.path.join(diagrams, 'height_weight_gaussian.svg'), transparent=True)
 
-def independent_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36, num_samps=20):
+def independent_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36, num_samps=20, diagrams='./diagrams'):
     "Plot independent Gaussians of height and weight."
     if h is None:
         h = np.linspace(1.25, 2.15, 100)[:, None]
@@ -918,22 +946,22 @@ def independent_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw
         hval = np.random.normal(size=(1,1))*np.sqrt(varh) + muh
         wval = np.random.normal(size=(1,1))*np.sqrt(varw) + muw
         a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'independent_height_weight{count:0>3}.png').format(count=count))
         count+=1
         a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'independent_height_weight{count:0>3}.png').format(count=count))
         count+=1
         a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'independent_height_weight{count:0>3}.png').format(count=count))
         count+=1
 
         a0[0].set(color=[0.,0.,0.])
         a1[0].set(color=[0.,0.,0.])
         a2[0].set(color=[0.,0.,0.])
-        plt.savefig('./diagrams/independent_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'independent_height_weight{count:0>3}.png').format(count=count))
         count+=1
 
-def correlated_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36, num_samps=20):
+def correlated_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=36, num_samps=20, diagrams='./diagrams'):
     "Plot correlated Gaussian distributions of height and weight."
     if h is None:
         h = np.linspace(1.25, 2.15, 100)[:, None]
@@ -977,19 +1005,19 @@ def correlated_height_weight(h=None, w=None, muh=1.7, varh=0.0225, muw=75, varw=
         hval = vec_s[0] + muh
         wval = vec_s[1] + muw
         a1 = ax[1].plot(hval, 0.1, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'correlated_height_weight{count:0>3}.png').format(count=count))
         count+=1
         a2 = ax[2].plot(wval, 0.002, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'correlated_height_weight{count:0>3}.png').format(count=count))
         count+=1
         a0 = ax[0].plot(hval, wval, marker='o', linewidth=3, color=[1., 0., 0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'correlated_height_weight{count:0>3}.png').format(count=count))
         count+=1
 
         a0[0].set(color=[0.,0.,0.])
         a1[0].set(color=[0.,0.,0.])
         a2[0].set(color=[0.,0.,0.])
-        plt.savefig('./diagrams/correlated_height_weight{count:0>3}.png'.format(count=count))
+        plt.savefig(os.path.join(diagrams, 'correlated_height_weight{count:0>3}.png').format(count=count))
         count+=1
 
 
@@ -1003,7 +1031,7 @@ def two_point_pred(K, f, x, ax=None, ind=[0, 1],
                         conditional_size = 4,
                         fixed_linestyle = '-',
                         fixed_linecolor = [0., 1., 0.],
-                        fixed_size = 4,stub=None, start=0):
+                        fixed_size = 4,stub=None, start=0, diagrams='./diagrams'):
     
     subK = K[ind][:, ind]
     f = f[ind]
@@ -1014,14 +1042,14 @@ def two_point_pred(K, f, x, ax=None, ind=[0, 1],
 
     cont, t, cent = base_plot(K, ind, ax=ax)
     if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start))
+        plt.savefig(os.path.join(diagrams, '{stub}{start:0>3}.svg').format(stub=stub, start=start))
 
     x_lim = ax.get_xlim()
     cont2 = plt.Line2D([x_lim[0], x_lim[1]], [f[0], f[0]], linewidth=fixed_size, linestyle=fixed_linestyle, color=fixed_linecolor)
     ax.add_line(cont2)
 
     if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+1))
+        plt.savefig(os.path.join(diagrams, '{stub}{start:0>3}.svg').format(stub=stub, start=start+1))
 
     # # Compute conditional mean and variance
     f2_mean = subK[0, 1]/subK[0, 0]*f[0]
@@ -1031,21 +1059,21 @@ def two_point_pred(K, f, x, ax=None, ind=[0, 1],
     pdf = plt.Line2D(x_val, pdf_val+f[0], linewidth=conditional_size, linestyle=conditional_linestyle, color=conditional_linecolor)
     ax.add_line(pdf)
     if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+2))
+        plt.savefig(os.path.join(diagrams, '{stub}{start:0>3}.svg').format(stub=stub, start=start+2))
     
     obs = plt.Line2D([f[1]], [f[0]], linewidth=10, markersize=10, color=fixed_linecolor, marker='o')
     ax.add_line(obs)
     if stub is not None:
-        plt.savefig('./diagrams/{stub}{start:0>3}.svg'.format(stub=stub, start=start+3))
+        plt.savefig(os.path.join(diagrams, '{stub}{start:0>3}.svg').format(stub=stub, start=start+3))
     
     # load gpdistfunc
 
     #printLatexText(['\mappingFunction_1=' numsf2str(f[0], 3)], 'inputValueF1.tex', '../../../gp/tex/diagrams')
 
 
-def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_theta=200):
+def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_theta=200, diagrams='./diagrams'):
 
-    """Make an animation of a circular sample from a covariance funciton."""
+    """Make an animation of a circular sample from a covariance function."""
 
     n = K.shape[0]
 
@@ -1078,7 +1106,7 @@ def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_t
     def init():
         for i in range(num_samps):
             line[i].set_data([], [])
-        return line,
+        return line
 
     # animation function.  This is called sequentially
     def animate(i):
@@ -1093,43 +1121,46 @@ def kern_circular_sample(K, mu=None, filename=None, fig=None, num_samps=5, num_t
         x = np.linspace(0, 1, n)
         for i in range(num_samps):
             line[i].set_data(x, y[:, i])
-        return line,
+        return line
 
     # call the animator.  blit=True means only re-draw the parts that have changed.
     anim = animation.FuncAnimation(fig, animate, init_func=init,
                                    frames=num_theta, blit=True)
     if filename is not None:
-        anim.save('./diagrams/' + filename, writer='imagemagick', fps=30)
+        anim.save(os.path.join(diagrams, filename), writer='imagemagick', fps=30)
 
 
-def covariance_func(x, kernel_function, formula, shortname=None, longname=None, **args):
+def covariance_func(x, kernel_function, x_cov=None, formula=None, shortname=None, longname=None, comment=None, diagrams='./diagrams', **args):
     """Write a slide on a given covariance matrix."""
     fig, ax = plt.subplots(figsize=one_figsize)
     hcolor = [1., 0., 1.]
-    K = kernel_function(x, x, **args)
+    if x_cov is None:
+        x_cov = x
+    K = kernel_function(x_cov, x_cov, **args)
     obj = matrix(K, ax=ax, type='image', bracket_style='boxes')
 
     if shortname is not None:
         filename = shortname + '_covariance'
     else:
         filename = 'covariance'
-    plt.savefig('./diagrams/' + filename + '.svg')
+    plt.savefig(os.path.join(diagrams, filename + '.svg'), transparent=True)
 
     ax.cla()
-    kern_circular_sample(K, fig=fig, filename=filename + '.gif')
+    kern_circular_sample(K, fig=fig, filename=filename + '.gif', diagrams=diagrams)
 
     out = '<h2>' + longname + ' Covariance</h2>'
     out += '\n\n'
     out += '<p><center>' + formula + '</center></p>'
-    out += '<table>\n  <tr><td><img src="./diagrams/' +filename + '.svg"></td><td><img src="./diagrams/' + filename + '.gif"></td></tr>\n</table>'
-    fhand = open('./diagrams/' + filename + '.html', 'w')
+    out += '<table>\n  <tr><td><img src="' + os.path.join(diagrams, filename) + '.svg"></td><td><img src="' + os.path.join(diagrams, filename) + '.gif"></td></tr>\n</table>'
+    if comment is not None:
+        out += '<p><center>' + comment + '</center></p>'
+    fhand = open(os.path.join(diagrams, filename + '.html'), 'w')
     fhand.write(out)
 
-    
-def dem_two_point_sample(kernel_function, **args):
+
+def two_point_sample(kernel_function, diagrams='./diagrams', **args):
     """Make plots for the two data point sample example for explaining gaussian processes."""
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(two_figsize))
-    hcolor = [1., 0., 1.]
     x = np.linspace(-1, 1, 25)[:, None]
     K = kernel_function(x, x, **args)
     obj = matrix(K, ax=ax[1], type='image')
@@ -1137,7 +1168,7 @@ def dem_two_point_sample(kernel_function, **args):
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
     #fig.colorbar(mappable=obj, ax=ax[1])
     #ax[1].set_axis('off')
-    plt.savefig('./diagrams/dem_two_point_sample000.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample000.svg'), transparent=True)
 
     f = np.random.multivariate_normal(np.zeros(25), K, size=1)
     ax[0].plot(range(1, 26), f.flatten(), 'o', markersize=5, linewidth=3, color=[1., 0., 0.])
@@ -1149,10 +1180,10 @@ def dem_two_point_sample(kernel_function, **args):
     ax[0].set_xlim(xlim)
     ax[0].set_xlabel('$i$', fontsize=20)
     ax[0].set_ylabel('$f$', fontsize=20)
-    plt.savefig('./diagrams/dem_two_point_sample001.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample001.svg'), transparent=True)
 
     ax[0].plot(np.array([1, 2]), [f[0,0], f[0,1]], 'o', markersize=10, linewidth=5, color=hcolor)
-    plt.savefig('./diagrams/dem_two_point_sample002.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample002.svg'), transparent=True)
     #plt.Circle?
 
     obj = matrix(K, ax=ax[1], type='image', 
@@ -1162,7 +1193,7 @@ def dem_two_point_sample(kernel_function, **args):
                       highlight_color=hcolor)
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample003.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample003.svg'), transparent=True)
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -1175,7 +1206,7 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 9])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample004.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample004.svg'), transparent=True)
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -1188,7 +1219,7 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 4])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample005.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample005.svg'), transparent=True)
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -1201,7 +1232,7 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 2])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample006.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample006.svg'), transparent=True)
 
     obj = matrix(K, ax=ax[1], type='image', 
                       highlight=True, 
@@ -1214,21 +1245,21 @@ def dem_two_point_sample(kernel_function, **args):
                      zoom_col=[0, 1])
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample007.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample007.svg'), transparent=True)
 
     obj = matrix(K[:2, :2], ax=ax[1], type='values')
     ax[1].set_xlabel('$i$',fontsize=16)
     ax[1].set_ylabel('$i^\prime$',fontsize=16)
-    plt.savefig('./diagrams/dem_two_point_sample008.svg')
+    plt.savefig(os.path.join(diagrams, 'two_point_sample008.svg'), transparent=True)
 
     ax[0].cla()
-    two_point_pred(K, f.T, x, ax=ax[0],ind=[0, 1], stub='dem_two_point_sample', start=9)
+    two_point_pred(K, f.T, x, ax=ax[0],ind=[0, 1], stub='two_point_sample', start=9, diagrams=diagrams)
 
     ax[0].cla()
-    two_point_pred(K, f.T, x, ax=ax[0],ind=[0, 4], stub='dem_two_point_sample', start=13)
+    two_point_pred(K, f.T, x, ax=ax[0],ind=[0, 4], stub='two_point_sample', start=13, diagrams=diagrams)
 
 
-def poisson():
+def poisson(diagrams='./diagrams'):
     from scipy.stats import poisson
     fig, ax = plt.subplots(figsize=two_figsize)
     y = np.asarray(range(0, 16))
@@ -1243,9 +1274,9 @@ def poisson():
     ax.set_xlabel('$y_i$', fontsize=20)
     ax.set_ylabel('$p(y_i)$', fontsize=20)
     ax.legend(fontsize=20)
-    plt.savefig('./diagrams/poisson.svg')
+    plt.savefig(os.path.join(diagrams, 'poisson.svg'), transparent=True)
 
-def logistic():
+def logistic(diagrams='./diagrams'):
     fig, ax = plt.subplots(figsize=two_figsize)
     f = np.linspace(-8, 8, 100)
     g = 1/(1+np.exp(-f))
@@ -1254,7 +1285,7 @@ def logistic():
     ax.set_title('Logistic Function', fontsize=20)
     ax.set_xlabel('$f_i$', fontsize=20)
     ax.set_ylabel('$g_i$', fontsize=20)
-    plt.savefig('./diagrams/logistic.svg')
+    plt.savefig(os.path.join(diagrams, 'logistic.svg'), transparent=True)
 
 
 def height(ax, h, ph):
@@ -1283,8 +1314,214 @@ def weight(ax, w, pw):
     ax.vlines(xlim[0], ylim[0], ylim[1], color='k')
     ax.hlines(ylim[0], xlim[0], xlim[1], color='k')
 
+def kronecker_illustrate(fontsize=25, diagrams='./diagrams'):
+    """Illustrate a Kronecker product"""
+    fig, ax = plt.subplots(1, 4, figsize=two_figsize)
+    A = [['$a$', '$b$'],
+         [ '$c$', '$d$']]
+    B = [['$\mathbf{K}$']]
 
-def perceptron(x_plus, x_minus, learn_rate=0.1, max_iters=10000, max_updates=30, seed=100001):
+    AkroneckerB = [['$a\mathbf{K}$', '$b\mathbf{K}$'],
+                    ['$c\mathbf{K}$', '$d\mathbf{K}$']]
+    ax[0].set_position([0, 0, 1, 1])
+    ax[0].set_xlim([0, 1])
+    ax[0].set_ylim([0, 1])
+    ax[0].text(0.4, 0.5, ' $\otimes$', horizontalalignment='center',
+                  fontsize=fontsize)
+    ax[0].text(0.55, 0.5, ' $=$', horizontalalignment='center',
+                  fontsize=fontsize)
+
+    ax[1].set_position([0.15, 0.4, 0.2, 0.2])
+    objA = matrix(A, ax=ax[1], bracket_style='square', type='entries',
+                  fontsize=fontsize)
+
+
+    ax[2].set_position([0.45, 0.45, 0.05, 0.1])
+    objB = matrix(B, ax=ax[2], bracket_style='none', type='entries',
+                  fontsize=fontsize)
+    
+    ax[3].set_position([0.57, 0.35, 0.35, 0.3])
+    objAkB = matrix(AkroneckerB, ax=ax[3], bracket_style='square', type='entries',
+                  fontsize=fontsize)
+    ax[0].set_axis_off()
+        
+    plt.savefig(os.path.join(diagrams, 'kronecker_product.svg'), transparent=True)
+def blank_canvas(ax):
+    """Turn an axis into a blank canvas"""
+    ax.set_position([0, 0, 1, 1])
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
+    ax.set_axis_off()
+    ax.set_frame_on(False)
+    ax.axes.get_xaxis().set_visible(False)
+    ax.axes.get_yaxis().set_visible(False)
+
+def kronecker_illustrate(fontsize=25, figsize=two_figsize, diagrams='./diagrams'):
+    """Illustrate a Kronecker product"""
+    fig, ax = plt.subplots(1, 4, figsize=figsize)
+    A = [['$a$', '$b$'],
+         [ '$c$', '$d$']]
+    B = [['$\mathbf{K}$']]
+
+    AkroneckerB = [['$a\mathbf{K}$', '$b\mathbf{K}$'],
+                    ['$c\mathbf{K}$', '$d\mathbf{K}$']]
+
+    blank_canvas(ax[0])
+    ax[0].text(0.4, 0.5, ' $\otimes$',
+               horizontalalignment='center',
+               fontsize=fontsize)
+    ax[0].text(0.55, 0.5, ' $=$',
+               horizontalalignment='center',
+               fontsize=fontsize)
+
+    ax[1].set_position([0.15, 0.4, 0.2, 0.2])
+    objA = matrix(A, ax=ax[1], bracket_style='square', type='entries',
+                  fontsize=fontsize)
+
+
+    ax[2].set_position([0.45, 0.45, 0.05, 0.1])
+    objB = matrix(B, ax=ax[2], bracket_style='none', type='entries',
+                  fontsize=fontsize)
+    
+    ax[3].set_position([0.57, 0.35, 0.35, 0.3])
+    objAkB = matrix(AkroneckerB, ax=ax[3], bracket_style='square', type='entries',
+                  fontsize=fontsize)
+        
+    plt.savefig(os.path.join(diagrams, 'kronecker_product.svg'), transparent=True)
+
+def kronecker_IK(fontsize=25, figsize=two_figsize, reverse=False, diagrams='./diagrams'):
+    """Illustrate a Kronecker product"""
+    fig, ax = plt.subplots(1, 4, figsize=figsize)
+    my_rgb = [[1., 1., 1.],[1., 0., 0.],[ 0., 1., 0.],[ 0., 0., 1.]]
+    from matplotlib.colors import ListedColormap
+    colormap = ListedColormap(my_rgb, name='primary+black')
+    dim_I = 3
+    dim_K = 3
+    I = np.eye(dim_I)
+    L = np.tril(np.ones(dim_K))
+    K = np.dot(L, L.T)
+        
+    blank_canvas(ax[0])
+    ax[0].text(0.3, 0.5, ' $\otimes$',
+               horizontalalignment='center',
+               fontsize=fontsize)
+    ax[0].text(0.615, 0.5, ' $=$',
+               horizontalalignment='center',
+               fontsize=fontsize)
+
+    ax[1].set_position([0.05, 0.05, 0.2, 0.9])
+    objI = matrix(np.stack([1-I]*3, 2), ax=ax[1],
+                  bracket_style='boxes', type='colorpatch',
+                  fontsize=fontsize)
+
+
+    ax[2].set_position([0.35, 0.05, 0.2, 0.9])
+    objK = matrix(np.stack((K==1, K==2, K==3), 2),
+                  ax=ax[2],
+                  bracket_style='boxes', type='colorpatch',
+                  fontsize=fontsize)
+    if reverse:
+        kron_IK = np.kron(K, I)    
+    else:
+        kron_IK = np.kron(I, K)    
+    ax[3].set_position([0.675, 0.1, 0.3, 0.85])
+    objAkB = matrix(np.stack((np.logical_or(kron_IK==1, kron_IK==0),
+                              np.logical_or(kron_IK==2, kron_IK==0),
+                              np.logical_or(kron_IK==3, kron_IK==0)), 2),
+                    ax=ax[3],
+                    bracket_style='boxes', type='colorpatch',
+                    fontsize=fontsize)
+    if reverse:
+        plt.savefig(os.path.join(diagrams, 'kronecker_KI.svg'), transparent=True)
+    else:
+        plt.savefig(os.path.join(diagrams, 'kronecker_IK.svg'), transparent=True)
+
+def kronecker_IK_highlight(fontsize=25, figsize=two_figsize, reverse=False, diagrams='./diagrams'):
+    """Illustrate a Kronecker product"""
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    my_rgb = [[1., 1., 1.],[1., 0., 0.],[ 0., 1., 0.],[ 0., 0., 1.]]
+    from matplotlib.colors import ListedColormap
+    colormap = ListedColormap(my_rgb, name='primary+black')
+    dim_I = 3
+    dim_K = 3
+    I = np.eye(dim_I)
+    L = np.tril(np.ones(dim_K))
+    K = np.dot(L, L.T)
+    if reverse:
+        kron_IK = np.kron(K, I)
+        stem = 'KI'
+    else:
+        kron_IK = np.kron(I, K)
+        stem = 'IK'
+        
+    IK_stack = np.stack((np.logical_or(kron_IK==1, kron_IK==0),
+                         np.logical_or(kron_IK==2, kron_IK==0),
+                         np.logical_or(kron_IK==3, kron_IK==0)), 2)        
+    ax.set_position([0, 0, 1, 1])
+    objAkB = matrix(IK_stack,
+                    ax=ax,
+                    bracket_style='boxes', type='colorpatch',
+                    fontsize=fontsize)
+        
+    plt.savefig(os.path.join(diagrams, 'kronecker_{stem}_highlighted001.svg').format(stem=stem))
+    objAkB = matrix(IK_stack,
+                    ax=ax,
+                    bracket_style='boxes', type='colorpatch',
+                    fontsize=fontsize,
+                    highlight=True, 
+                    highlight_row=[0, 2], 
+                    highlight_col=[0, 2], 
+                    highlight_color=hcolor,
+                    highlight_width=8)
+    plt.savefig(os.path.join(diagrams, 'kronecker_{stem}_highlighted002.svg').format(stem=stem))
+    count = 2
+    for zoom in [6, 3, 2]:
+        objAkB = matrix(IK_stack,
+                        ax=ax,
+                        bracket_style='boxes', type='colorpatch',
+                        fontsize=fontsize,
+                        highlight=True, 
+                        highlight_row=[0, 2], 
+                        highlight_col=[0, 2], 
+                        highlight_color=hcolor,
+                        highlight_width=8,
+                        zoom=True,
+                        zoom_row=[0, zoom],
+                        zoom_col=[0, zoom])
+        count+=1
+        plt.savefig(os.path.join(diagrams, 'kronecker_{stem}_highlighted{count:0>3}.svg').format(stem=stem, count=count))
+
+def kronecker_WX(fontsize=25, figsize=two_figsize, diagrams='./diagrams'):
+    """Illustrate a Kronecker product"""
+    fig, ax = plt.subplots(1, 4, figsize=figsize)
+    A = [['$\mathbf{W}$', '$\mathbf{0}$', '$\mathbf{0}$'],['$\mathbf{0}$', '$\mathbf{W}$', '$\mathbf{0}$'],['$\mathbf{0}$', '$\mathbf{0}$', '$\mathbf{W}$']]
+    B = [['$\mathbf{x}_{1,:}$'],['$\mathbf{x}_{2,:}$'],['$\mathbf{x}_{3,:}$']]
+    AkroneckerB = [['$\mathbf{W}\mathbf{x}_{1,:}$'],[ '$\mathbf{W}\mathbf{x}_{2,:}$'], ['$\mathbf{W}\mathbf{x}_{3,:}$']]
+
+    blank_canvas(ax[0])
+    ax[0].text(0.4, 0.5, r'$\times$',
+               horizontalalignment='center',
+               fontsize=fontsize)
+    ax[0].text(0.65, 0.5, ' $=$',
+               horizontalalignment='center',
+               fontsize=fontsize)
+
+    ax[1].set_position([0.05, 0.35, 0.3, 0.3])
+    objA = matrix(A, ax=ax[1], bracket_style='square', type='entries',
+                  fontsize=fontsize)
+
+
+    ax[2].set_position([0.4, 0.35, 0.25, 0.3])
+    objB = matrix(B, ax=ax[2], bracket_style='none', type='entries',
+                  fontsize=fontsize)
+    
+    ax[3].set_position([0.6, 0.35, 0.35, 0.3])
+    objAkB = matrix(AkroneckerB, ax=ax[3], bracket_style='square', type='entries',
+                  fontsize=fontsize)
+        
+    plt.savefig(os.path.join(diagrams, 'kronecker_WX.svg'), transparent=True)
+
+def perceptron(x_plus, x_minus, learn_rate=0.1, max_iters=10000, max_updates=30, seed=100001, diagrams='./diagrams'):
     w, b, x_select = mlai.init_perceptron(x_plus, x_minus, seed=seed)
     updates = 0
     count = 0
@@ -1296,14 +1533,14 @@ def perceptron(x_plus, x_minus, learn_rate=0.1, max_iters=10000, max_updates=30,
     handle['arrow'].set_visible(False)
     handle['circle'] = plt.Circle((x_select[0], x_select[1]), 0.25, color='b', fill=False)
     ax2[0].add_artist(handle['circle'])
-    f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))
+    f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.svg').format(samp=count))
     extent = ax2[0].get_window_extent().transformed(f2.dpi_scale_trans.inverted())
-    f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)
+    f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.png').format(samp=count), bbox_inches=extent)
     count += 1
     handle['plane'].set_visible(True)
     handle['arrow'].set_visible(True)
-    f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))
-    f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)
+    f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.svg').format(samp=count))
+    f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.png').format(samp=count), bbox_inches=extent)
 
     while updates<max_updates and iterations<max_iters:
         iterations += 1
@@ -1312,11 +1549,43 @@ def perceptron(x_plus, x_minus, learn_rate=0.1, max_iters=10000, max_updates=30,
             updates += 1
             count+=1
             handle['circle'].center = x_select[0], x_select[1]
-            f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))     
-            f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)        
+            f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.svg').format(samp=count))     
+            f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.png').format(samp=count), bbox_inches=extent)        
             count+=1
             handle = update_perceptron(handle, f2, ax2, x_plus, x_minus, updates, w, b)
-            f2.savefig('./diagrams/perceptron{samp:0>3}.svg'.format(samp=count))
-            f2.savefig('./diagrams/perceptron{samp:0>3}.png'.format(samp=count), bbox_inches=extent)
+            f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.svg').format(samp=count))
+            f2.savefig(os.path.join(diagrams, 'perceptron{samp:0>3}.png').format(samp=count), bbox_inches=extent)
     print('Data passes:', iterations)
     return count
+
+import GPy
+def contour_data(data, length_scales, log_SNRs, kernel_call=GPy.kern.RBF):
+    """
+    Evaluate the GP objective function for a given data set for a range of
+    signal to noise ratios and a range of lengthscales.
+
+    :data_set: A data set from the utils.datasets director.
+    :length_scales: a list of length scales to explore for the contour plot.
+    :log_SNRs: a list of base 10 logarithm signal to noise ratios to explore for the contour plot.
+    :kernel: a kernel to use for the 'signal' portion of the data.
+    """
+
+    lls = []
+    total_var = np.var(data['Y'])
+    kernel = kernel_call(1, variance=1., lengthscale=1.)
+    model = GPy.models.GPRegression(data['X'], data['Y'], kernel=kernel)
+    for log_SNR in log_SNRs:
+        SNR = 10.**log_SNR
+        noise_var = total_var / (1. + SNR)
+        signal_var = total_var - noise_var
+        model.kern['.*variance'] = signal_var
+        model.likelihood.variance = noise_var
+        length_scale_lls = []
+
+        for length_scale in length_scales:
+            model['.*lengthscale'] = length_scale
+            length_scale_lls.append(model.log_likelihood())
+
+        lls.append(length_scale_lls)
+
+    return np.array(lls)
